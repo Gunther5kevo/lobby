@@ -61,6 +61,24 @@ Displays the user's gamer tag, avatar, favorite games, and achievements.
 
 ---
 
+## Tech Stack
+
+### Frontend
+- Flutter for cross-platform mobile development
+- Riverpod for state management
+- Material-based UI components with custom styling
+
+### Backend
+- Firebase Authentication for user accounts
+- Cloud Firestore for real-time chat and application data
+- Firebase Cloud Storage for media uploads (clips, screenshots, images)
+
+### Real-Time Features
+- Firestore real-time listeners for chat updates
+- Firebase Cloud Messaging for push notifications
+
+---
+
 ## Design Philosophy
 
 Lobby focuses on:
@@ -69,27 +87,9 @@ Lobby focuses on:
 - Neutral color palette with subtle accents
 - Clear typography and spacing
 - Mobile-first usability
-- Familiar messaging patterns to reduce learning curve
+- Familiar messaging patterns to reduce the learning curve
 
 The design avoids neon or cyberpunk aesthetics and instead aims for a professional, realistic application interface.
-
----
-
-## Potential Technology Stack
-
-Frontend:
-- React or React Native
-- Tailwind CSS or modern component libraries
-
-Backend:
-- Supabase or Firebase for authentication and data storage
-- Real-time messaging infrastructure
-
-Media:
-- Cloud storage for image and clip sharing
-
-Notifications:
-- Push notification system for messages, invites, and group activity
 
 ---
 
@@ -99,7 +99,7 @@ Planned features may include:
 
 - Voice party chat
 - Game integration APIs
-- Cross-platform desktop client
+- Desktop support
 - Clip recording and quick sharing
 - Moderation tools for communities
 - Advanced privacy and notification settings
