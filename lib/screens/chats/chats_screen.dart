@@ -37,9 +37,9 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
             _ChatsHeader(),
 
             // ── Search bar ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: const GuildSearchBar(),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: GuildSearchBar(),
             ),
 
             const SizedBox(height: 4),

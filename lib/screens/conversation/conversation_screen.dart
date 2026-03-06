@@ -91,12 +91,12 @@ class _ConversationScreenState
               itemBuilder: (context, index) {
                 // Typing indicator always at the end
                 if (isTyping && index == messages.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                  return const Padding(
+                    padding: EdgeInsets.only(top: 4, bottom: 4),
                     child: Row(
                       children: [
-                        const SizedBox(width: 36), // avatar space
-                        const TypingIndicator(),
+                        SizedBox(width: 36), // avatar space
+                        TypingIndicator(),
                       ],
                     ),
                   );

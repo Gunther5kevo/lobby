@@ -185,7 +185,7 @@ final List<Message> seedMessages = [
     senderId: 'kraken',
     timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
     type: MessageType.voiceNote,
-    voiceNote: VoiceNote(
+    voiceNote: const VoiceNote(
       durationSeconds: 18,
       waveformData: [
         0.3, 0.5, 0.7, 0.4, 0.9, 0.6, 0.4, 0.8,
@@ -194,7 +194,7 @@ final List<Message> seedMessages = [
       ],
       playedFraction: 0.45,
     ),
-    reactions: [const Reaction(emoji: '😂', count: 2)],
+    reactions: const [Reaction(emoji: '😂', count: 2)],
     status: MessageStatus.read,
     isMine: false,
   ),
@@ -223,7 +223,7 @@ final List<Message> seedMessages = [
       emoji: '🏆',
       gradientColors: [0xFF1e2d5a, 0xFF0e1823],
     ),
-    reactions: [
+    reactions: const [
       Reaction(emoji: '🔥', count: 3),
       Reaction(emoji: '💪', count: 1),
     ],

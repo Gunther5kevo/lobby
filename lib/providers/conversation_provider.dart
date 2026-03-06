@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/message_model.dart';
-import '../models/chat_model.dart';
 
 // ── Message list ───────────────────────────────────────────────────────────
 

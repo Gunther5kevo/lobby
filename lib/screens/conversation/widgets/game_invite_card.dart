@@ -143,21 +143,21 @@ class _Footer extends StatelessWidget {
         );
 
       case GameInviteStatus.accepted:
-        return _StatusLabel(
+        return const _StatusLabel(
           icon: Icons.check_circle_rounded,
           label: 'Accepted',
           color: AppColors.success,
         );
 
       case GameInviteStatus.declined:
-        return _StatusLabel(
+        return const _StatusLabel(
           icon: Icons.cancel_rounded,
           label: 'Declined',
           color: AppColors.textMuted,
         );
 
       case GameInviteStatus.expired:
-        return _StatusLabel(
+        return const _StatusLabel(
           icon: Icons.access_time_rounded,
           label: 'Invite expired',
           color: AppColors.textMuted,

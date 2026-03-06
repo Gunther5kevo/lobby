@@ -111,5 +111,3 @@ Planned features may include:
 Lobby aims to simplify communication for gamers by offering a dedicated messaging platform that blends familiar chat functionality with tools tailored for gaming culture.
 
 It is designed to be lightweight, intuitive, and scalable for growing gaming communities.
-
----

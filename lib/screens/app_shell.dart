@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import './chats/chats_screen.dart';
+import './friends/friends_screen.dart';
+import './groups/groups_screen.dart';
+import './profile/profile_screen.dart';
 
 /// Root scaffold. Hosts the [GuildBottomNavBar] and swaps
 /// between top-level screens based on [navIndexProvider].
@@ -14,9 +17,9 @@ class AppShell extends ConsumerWidget {
 
   static const _screens = [
     ChatsScreen(),
-    _StubScreen(label: 'Friends'),
-    _StubScreen(label: 'Groups'),
-    _StubScreen(label: 'Profile'),
+    FriendsScreen(),
+    GroupsScreen(),
+    ProfileScreen(),
   ];
 
   @override
