@@ -30,6 +30,14 @@ final currentUidProvider = Provider<String?>((ref) {
   return ref.watch(authStateProvider).valueOrNull?.uid;
 });
 
+/// The current user's UID — throws if called while signed out.
+/// Use this inside notifiers that are only alive when the user is signed in.
+final currentUidRequiredProvider = Provider<String>((ref) {
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+  if (uid == null) throw StateError('currentUidRequiredProvider: not signed in');
+  return uid;
+});
+
 // ── Sign-in actions ────────────────────────────────────────────────────────
 
 /// Tracks loading + error state for any auth action.

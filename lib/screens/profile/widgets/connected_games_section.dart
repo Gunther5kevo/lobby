@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/profile_model.dart';
 import '../../../providers/profile_provider.dart';
+import '../../../providers/game_detection_provider.dart';
 import '../../../widgets/section_header.dart';
 
 /// Shows each connected game account with rank, username, and a connect/disconnect toggle.
@@ -13,6 +14,8 @@ class ConnectedGamesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final oauthState = ref.watch(gameOAuthProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -26,15 +29,18 @@ class ConnectedGamesSection extends ConsumerWidget {
                 _ConnectedGameRow(
                   game: games[i],
                   onToggle: () => ref
-                      .read(profileProvider.notifier)
-                      .toggleGameConnection(games[i].id),
+                      .read(profileActionProvider.notifier)
+                      .toggleGameConnection(games[i]),
                 ),
               ],
               const SizedBox(height: 10),
-              // Link new game CTA
+              // Link Another Game CTA
               GestureDetector(
-                onTap: () {},
-                child: Container(
+                onTap: oauthState.status == OAuthStatus.connecting
+                    ? null
+                    : () => _showLinkSheet(context, ref),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
                   height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.bgElevated,
@@ -44,11 +50,20 @@ class ConnectedGamesSection extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.add_rounded,
-                          size: 18, color: AppColors.textMuted),
+                      oauthState.status == OAuthStatus.connecting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  color: AppColors.accent, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add_rounded,
+                              size: 18, color: AppColors.textMuted),
                       const SizedBox(width: 8),
                       Text(
-                        'Link Another Game',
+                        oauthState.status == OAuthStatus.connecting
+                            ? 'Connecting…'
+                            : 'Link Another Game',
                         style: AppTextStyles.chatName.copyWith(
                           fontSize: 14,
                           color: AppColors.textMuted,
@@ -63,6 +78,160 @@ class ConnectedGamesSection extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showLinkSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bgElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _LinkGameSheet(),
+    );
+  }
+}
+
+// ── Link game bottom sheet ─────────────────────────────────────────────────
+
+class _LinkGameSheet extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final oauthState = ref.watch(gameOAuthProvider);
+    final isLoading  = oauthState.status == OAuthStatus.connecting;
+
+    // Show success snackbar then pop
+    ref.listen<GameOAuthState>(gameOAuthProvider, (_, next) {
+      if (next.status == OAuthStatus.success && next.lastConnected != null) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${next.lastConnected} linked!'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+        ref.read(gameOAuthProvider.notifier).reset();
+      }
+    });
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Link a Game Account',
+              style: AppTextStyles.screenTitle.copyWith(fontSize: 18)),
+          const SizedBox(height: 4),
+          Text(
+            'Connect your accounts to show rank and stats on your profile.',
+            style: AppTextStyles.chatPreview
+                .copyWith(color: AppColors.textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          // Riot Games option
+          _OAuthOption(
+            emoji: '🎯',
+            title: 'Riot Games',
+            subtitle: 'Valorant · League of Legends',
+            isLoading: isLoading,
+            onTap: () => ref.read(gameOAuthProvider.notifier).connectRiot(),
+          ),
+          const SizedBox(height: 10),
+
+          // Steam option
+          _OAuthOption(
+            emoji: '🎮',
+            title: 'Steam',
+            subtitle: 'PC games & playtime',
+            isLoading: isLoading,
+            onTap: () => ref.read(gameOAuthProvider.notifier).connectSteam(),
+          ),
+
+          if (oauthState.error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              oauthState.error!,
+              style: AppTextStyles.chatPreview
+                  .copyWith(color: AppColors.danger, fontSize: 13),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _OAuthOption extends StatelessWidget {
+  const _OAuthOption({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.bgElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderStrong),
+              ),
+              alignment: Alignment.center,
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: AppTextStyles.chatName.copyWith(fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: AppTextStyles.chatPreview.copyWith(
+                          fontSize: 12, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.textMuted),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -298,6 +298,14 @@ class FirestoreService {
     await _users.doc(uid).collection('connectedGames').doc(docId).set(gameData);
   }
 
+  /// Flips the isConnected boolean on a connected game document.
+  Future<void> toggleConnectedGame(String uid, String gameId) async {
+    final ref = _users.doc(uid).collection('connectedGames').doc(gameId);
+    final snap = await ref.get();
+    final current = snap.data()?['isConnected'] as bool? ?? true;
+    await ref.update({'isConnected': !current});
+  }
+
   Stream<List<Map<String, dynamic>>> connectedGamesStream(String uid) {
     return _users
         .doc(uid)

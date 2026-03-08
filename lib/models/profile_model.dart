@@ -64,15 +64,37 @@ class ConnectedGame extends Equatable {
   final String rankEmoji;
   final bool isConnected;
 
+  factory ConnectedGame.fromMap(Map<String, dynamic> map) {
+    return ConnectedGame(
+      id:          map['id']          as String? ?? '',
+      gameName:    map['gameName']    as String? ?? '',
+      emoji:       map['emoji']       as String? ?? '🎮',
+      accountName: map['accountName'] as String? ?? '',
+      rank:        map['rank']        as String? ?? '',
+      rankEmoji:   map['rankEmoji']   as String? ?? '',
+      isConnected: map['isConnected'] as bool?   ?? true,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id':          id,
+    'gameName':    gameName,
+    'emoji':       emoji,
+    'accountName': accountName,
+    'rank':        rank,
+    'rankEmoji':   rankEmoji,
+    'isConnected': isConnected,
+  };
+
   ConnectedGame copyWith({bool? isConnected}) => ConnectedGame(
-        id: id,
-        gameName: gameName,
-        emoji: emoji,
-        accountName: accountName,
-        rank: rank,
-        rankEmoji: rankEmoji,
-        isConnected: isConnected ?? this.isConnected,
-      );
+    id:          id,
+    gameName:    gameName,
+    emoji:       emoji,
+    accountName: accountName,
+    rank:        rank,
+    rankEmoji:   rankEmoji,
+    isConnected: isConnected ?? this.isConnected,
+  );
 
   @override
   List<Object?> get props =>
@@ -120,7 +142,7 @@ class UserProfile extends Equatable {
     required this.connectedGames,
     required this.gameStats,
     this.totalFriends = 0,
-    this.totalGroups = 0,
+    this.totalGroups  = 0,
   });
 
   final String id;
@@ -128,50 +150,82 @@ class UserProfile extends Equatable {
   final String handle;
   final String bio;
   final String avatarInitial;
-  final int avatarColorIndex;
+  final int    avatarColorIndex;
   final UserStatus status;
 
-  // XP & progression
   final int level;
   final int xp;
   final int xpToNext;
   final int guildPoints;
 
-  final DateTime joinedAt;
-  final List<Achievement> achievements;
-  final List<ConnectedGame> connectedGames;
+  final DateTime             joinedAt;
+  final List<Achievement>    achievements;
+  final List<ConnectedGame>  connectedGames;
   final List<GameStatsEntry> gameStats;
 
   final int totalFriends;
   final int totalGroups;
 
-  double get xpProgress => xp / xpToNext;
+  double get xpProgress => xpToNext > 0 ? xp / xpToNext : 0;
+
+  factory UserProfile.fromFirestore(
+    Map<String, dynamic> data, {
+    List<ConnectedGame>? connectedGames,
+  }) {
+    final rawName    = data['displayName'] as String? ?? 'User';
+    final initial    = rawName.isNotEmpty ? rawName[0].toUpperCase() : 'U';
+
+    return UserProfile(
+      id:              data['uid']           as String?  ?? '',
+      displayName:     rawName,
+      handle:          data['handle']        as String?  ?? '#unknown',
+      bio:             data['bio']           as String?  ?? '',
+      avatarInitial:   initial,
+      avatarColorIndex: data['avatarColorIndex'] as int? ?? 0,
+      status: UserStatus.values.firstWhere(
+        (s) => s.name == (data['status'] as String? ?? ''),
+        orElse: () => UserStatus.offline,
+      ),
+      level:        data['level']        as int? ?? 1,
+      xp:           data['xp']           as int? ?? 0,
+      xpToNext:     data['xpToNext']     as int? ?? 1000,
+      guildPoints:  data['guildPoints']  as int? ?? 0,
+      joinedAt:     (data['joinedAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      achievements:   [],
+      connectedGames: connectedGames ?? [],
+      gameStats:      [],
+      totalFriends:  data['totalFriends'] as int? ?? 0,
+      totalGroups:   data['totalGroups']  as int? ?? 0,
+    );
+  }
 
   UserProfile copyWith({
-    String? displayName,
-    String? handle,
-    String? bio,
-    UserStatus? status,
+    String?            displayName,
+    String?            handle,
+    String?            bio,
+    UserStatus?        status,
     List<ConnectedGame>? connectedGames,
+    int?               totalFriends,
+    int?               totalGroups,
   }) =>
       UserProfile(
-        id: id,
-        displayName: displayName ?? this.displayName,
-        handle: handle ?? this.handle,
-        bio: bio ?? this.bio,
-        avatarInitial: avatarInitial,
+        id:              id,
+        displayName:     displayName     ?? this.displayName,
+        handle:          handle          ?? this.handle,
+        bio:             bio             ?? this.bio,
+        avatarInitial:   avatarInitial,
         avatarColorIndex: avatarColorIndex,
-        status: status ?? this.status,
-        level: level,
-        xp: xp,
-        xpToNext: xpToNext,
-        guildPoints: guildPoints,
-        joinedAt: joinedAt,
-        achievements: achievements,
-        connectedGames: connectedGames ?? this.connectedGames,
-        gameStats: gameStats,
-        totalFriends: totalFriends,
-        totalGroups: totalGroups,
+        status:          status          ?? this.status,
+        level:           level,
+        xp:              xp,
+        xpToNext:        xpToNext,
+        guildPoints:     guildPoints,
+        joinedAt:        joinedAt,
+        achievements:    achievements,
+        connectedGames:  connectedGames  ?? this.connectedGames,
+        gameStats:       gameStats,
+        totalFriends:    totalFriends    ?? this.totalFriends,
+        totalGroups:     totalGroups     ?? this.totalGroups,
       );
 
   @override
@@ -182,7 +236,7 @@ class UserProfile extends Equatable {
       ];
 }
 
-// ── Seed profile ───────────────────────────────────────────────────────────
+// ── Seed profile (used for UI preview / tests only) ───────────────────────
 
 final seedProfile = UserProfile(
   id: 'me',
@@ -282,9 +336,9 @@ final seedProfile = UserProfile(
       gradientStart: 0xFF1a2040,
       gradientEnd:   0xFF0e1428,
       stats: const [
-        GameStat(label: 'K/D Ratio', value: '1.84', sublabel: 'Season avg'),
-        GameStat(label: 'Win Rate', value: '61%', sublabel: '248 games'),
-        GameStat(label: 'HS Rate', value: '28%', sublabel: 'Headshots'),
+        GameStat(label: 'K/D Ratio',  value: '1.84', sublabel: 'Season avg'),
+        GameStat(label: 'Win Rate',   value: '61%',  sublabel: '248 games'),
+        GameStat(label: 'HS Rate',    value: '28%',  sublabel: 'Headshots'),
         GameStat(label: 'Best Agent', value: 'Jett', sublabel: '82 games'),
       ],
     ),
@@ -294,10 +348,10 @@ final seedProfile = UserProfile(
       gradientStart: 0xFF1a2a1a,
       gradientEnd:   0xFF0e1e0e,
       stats: const [
-        GameStat(label: 'K/D Ratio', value: '2.1', sublabel: 'Season avg'),
-        GameStat(label: 'Win Rate', value: '14%', sublabel: '104 games'),
-        GameStat(label: 'Avg Damage', value: '1,240', sublabel: 'Per game'),
-        GameStat(label: 'Top Legend', value: 'Wraith', sublabel: '61 games'),
+        GameStat(label: 'K/D Ratio',   value: '2.1',   sublabel: 'Season avg'),
+        GameStat(label: 'Win Rate',    value: '14%',   sublabel: '104 games'),
+        GameStat(label: 'Avg Damage',  value: '1,240', sublabel: 'Per game'),
+        GameStat(label: 'Top Legend',  value: 'Wraith', sublabel: '61 games'),
       ],
     ),
   ],

@@ -43,7 +43,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 
   void _save() {
     HapticFeedback.lightImpact();
-    ref.read(profileProvider.notifier).updateProfile(
+    ref.read(profileActionProvider.notifier).updateProfile(
           displayName: _nameCtrl.text.trim(),
           handle: _handleCtrl.text.trim(),
           bio: _bioCtrl.text.trim(),

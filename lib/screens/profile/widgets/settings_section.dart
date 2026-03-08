@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/profile_provider.dart';
 import '../../../widgets/section_header.dart';
 
@@ -132,7 +133,7 @@ class SettingsSection extends ConsumerWidget {
               icon: Icons.logout_rounded,
               label: 'Sign Out',
               color: AppColors.danger,
-              onTap: () => _confirmSignOut(context),
+              onTap: () => _confirmSignOut(context, ref),
             ),
           ],
         ),
@@ -142,74 +143,117 @@ class SettingsSection extends ConsumerWidget {
     );
   }
 
-  void _confirmSignOut(BuildContext context) {
+  void _confirmSignOut(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.bgElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            20, 12, 20, MediaQuery.of(context).padding.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2)),
+      builder: (_) => _SignOutSheet(onConfirm: () async {
+        Navigator.pop(context); // close sheet first
+        await ref.read(authActionProvider.notifier).signOut();
+        // AuthGate in main.dart automatically routes to LoginScreen
+        // once the auth stream emits null — no manual navigation needed.
+      }),
+    );
+  }
+}
+
+// ── Sign-out confirmation sheet ────────────────────────────────────────────
+
+class _SignOutSheet extends StatefulWidget {
+  const _SignOutSheet({required this.onConfirm});
+  final Future<void> Function() onConfirm;
+
+  @override
+  State<_SignOutSheet> createState() => _SignOutSheetState();
+}
+
+class _SignOutSheetState extends State<_SignOutSheet> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 12, 20, MediaQuery.of(context).padding.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 20),
-            Text('Sign Out?',
-                style: AppTextStyles.screenTitle.copyWith(fontSize: 18)),
-            const SizedBox(height: 8),
-            Text(
-              'You can sign back in at any time.',
-              style: AppTextStyles.chatPreview.copyWith(
-                color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 20),
+          Text('Sign Out?',
+              style: AppTextStyles.screenTitle.copyWith(fontSize: 18)),
+          const SizedBox(height: 8),
+          Text(
+            'You can sign back in at any time.',
+            style: AppTextStyles.chatPreview
+                .copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
+
+          // Confirm button — shows spinner while signing out
+          GestureDetector(
+            onTap: _loading
+                ? null
+                : () async {
+                    setState(() => _loading = true);
+                    await widget.onConfirm();
+                  },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              height: 46,
+              decoration: BoxDecoration(
+                color: _loading
+                    ? AppColors.danger.withOpacity(0.6)
+                    : AppColors.danger,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              alignment: Alignment.center,
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5),
+                    )
+                  : Text(
+                      'Sign Out',
+                      style: AppTextStyles.chatName
+                          .copyWith(color: Colors.white, fontSize: 15),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Cancel
+          GestureDetector(
+            onTap: _loading ? null : () => Navigator.pop(context),
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'Cancel',
+                style: AppTextStyles.chatName
+                    .copyWith(color: AppColors.textSecondary, fontSize: 15),
               ),
             ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.danger,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Sign Out',
-                  style: AppTextStyles.chatName
-                      .copyWith(color: Colors.white, fontSize: 15),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Cancel',
-                  style: AppTextStyles.chatName.copyWith(
-                      color: AppColors.textSecondary, fontSize: 15),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -277,8 +321,8 @@ class _ToggleRow extends StatelessWidget {
                         fontSize: 14, fontWeight: FontWeight.w500)),
                 if (sublabel != null)
                   Text(sublabel!,
-                      style: AppTextStyles.chatPreview
-                          .copyWith(fontSize: 12, color: AppColors.textMuted)),
+                      style: AppTextStyles.chatPreview.copyWith(
+                          fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -295,9 +339,7 @@ class _ToggleRow extends StatelessWidget {
                 color: value ? AppColors.accent : AppColors.bgCard,
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(
-                  color: value
-                      ? AppColors.accent
-                      : AppColors.borderStrong,
+                  color: value ? AppColors.accent : AppColors.borderStrong,
                   width: 1.5,
                 ),
               ),
@@ -308,8 +350,7 @@ class _ToggleRow extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(3),
                   child: Container(
-                    width: 18,
-                    height: 18,
+                    width: 18, height: 18,
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -367,8 +408,8 @@ class _ActionRow extends StatelessWidget {
               if (trailing != null)
                 Text(
                   trailing!,
-                  style: AppTextStyles.chatPreview.copyWith(
-                      fontSize: 13, color: AppColors.textMuted),
+                  style: AppTextStyles.chatPreview
+                      .copyWith(fontSize: 13, color: AppColors.textMuted),
                 ),
               if (trailing == null && color == null)
                 const Icon(Icons.chevron_right_rounded,

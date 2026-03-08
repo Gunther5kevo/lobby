@@ -53,7 +53,7 @@ class GameOAuthNotifier extends StateNotifier<GameOAuthState> {
   GameDetectionService get _detection =>
       _ref.read(gameDetectionServiceProvider);
   FirestoreService get _fs => _ref.read(firestoreServiceProvider);
-  String get _myUid => _ref.read(currentUidProvider)!;
+  String get _myUid => _ref.read(currentUidRequiredProvider);
 
   // ── Riot (Valorant / LoL) ──────────────────────────────────────
 

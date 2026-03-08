@@ -96,14 +96,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             children: [
               const SizedBox(height: 20),
 
-              // ── Back + title ─────────────────────────────────
               Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.of(context).maybePop(),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: AppColors.bgElevated,
                         borderRadius: BorderRadius.circular(10),
@@ -133,7 +131,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 32),
 
-              // ── Display name ─────────────────────────────────
               const FieldLabel('Display Name'),
               const SizedBox(height: 6),
               InputField(
@@ -144,7 +141,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 14),
 
-              // ── Handle ───────────────────────────────────────
               const FieldLabel('Handle'),
               const SizedBox(height: 4),
               Text(
@@ -163,7 +159,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 14),
 
-              // ── Email ────────────────────────────────────────
               const FieldLabel('Email'),
               const SizedBox(height: 6),
               InputField(
@@ -175,7 +170,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 14),
 
-              // ── Password ─────────────────────────────────────
               const FieldLabel('Password'),
               const SizedBox(height: 6),
               InputField(
@@ -197,7 +191,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 14),
 
-              // ── Confirm password ─────────────────────────────
               const FieldLabel('Confirm Password'),
               const SizedBox(height: 6),
               InputField(
@@ -207,8 +200,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _register(),
                 suffix: GestureDetector(
-                  onTap: () =>
-                      setState(() => _obscureConfirm = !_obscureConfirm),
+                  onTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
                   child: Icon(
                     _obscureConfirm
                         ? Icons.visibility_outlined
@@ -219,17 +211,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
               ),
 
-              // ── Validation error ─────────────────────────────
               if (_validationError != null) ...[
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.danger.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppColors.danger.withOpacity(0.3)),
+                    border: Border.all(color: AppColors.danger.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
@@ -252,7 +241,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
               const SizedBox(height: 28),
 
-              // ── Create account button ────────────────────────
               PrimaryButton(
                 label: 'Create Account',
                 isLoading: authState.isLoading,
@@ -266,11 +254,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const Expanded(child: Divider(color: AppColors.border)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'or',
-                      style: AppTextStyles.chatPreview.copyWith(
-                          color: AppColors.textMuted, fontSize: 13),
-                    ),
+                    child: Text('or',
+                        style: AppTextStyles.chatPreview.copyWith(
+                            color: AppColors.textMuted, fontSize: 13)),
                   ),
                   const Expanded(child: Divider(color: AppColors.border)),
                 ],

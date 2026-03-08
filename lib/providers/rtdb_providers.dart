@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/firestore_service.dart' show FirestoreService;
+import 'package:lobby/services/firestore_service.dart';
 import '../services/rtdb_service.dart';
 import 'auth_provider.dart';
 import 'firestore_providers.dart';
@@ -27,8 +27,7 @@ final channelMessagesProvider =
 /// List of UIDs currently typing in a chat (excludes self).
 final typingUsersProvider =
     StreamProvider.family<List<String>, String>((ref, chatId) {
-  final myUid = ref.watch(currentUidProvider);
-  if (myUid == null) return const Stream.empty();
+  final myUid = ref.watch(currentUidRequiredProvider);
   return ref.watch(rtdbServiceProvider).typingStream(chatId, myUid);
 });
 
@@ -81,8 +80,7 @@ class DmMessageNotifier extends StateNotifier<MessageSendState> {
   }
 
   Future<void> setTyping(String chatId, bool isTyping) async {
-    final uid = _ref.read(currentUidProvider);
-    if (uid == null) return;
+    final uid = _ref.read(currentUidRequiredProvider);
     await _rtdb.setTyping(chatId, uid, isTyping);
   }
 }

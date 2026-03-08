@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
-import '../../providers/profile_provider.dart';
+import '../../providers/firestore_providers.dart';
 import 'widgets/achievements_section.dart';
 import 'widgets/connected_games_section.dart';
 import 'widgets/edit_profile_sheet.dart';
@@ -14,62 +14,67 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileProvider);
+    final profileAsync = ref.watch(myProfileProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Top spacing ──────────────────────────────────────
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        child: profileAsync.when(
+          data: (profile) => CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── Top spacing ──────────────────────────────────────
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // ── Profile header card ──────────────────────────────
-            SliverToBoxAdapter(
-              child: ProfileHeader(
-                profile: profile,
-                onEdit: () => _showEditSheet(context, ref),
+              // ── Profile header card ──────────────────────────────
+              SliverToBoxAdapter(
+                child: ProfileHeader(
+                  profile: profile,
+                  onEdit: () => _showEditSheet(context, profile),
+                ),
               ),
-            ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-            // ── Game stats ───────────────────────────────────────
-            SliverToBoxAdapter(
-              child: StatsSection(gameStats: profile.gameStats),
-            ),
+              // ── Game stats ───────────────────────────────────────
+              SliverToBoxAdapter(
+                child: StatsSection(gameStats: profile.gameStats),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-            // ── Achievements ─────────────────────────────────────
-            SliverToBoxAdapter(
-              child: AchievementsSection(achievements: profile.achievements),
-            ),
+              // ── Achievements ─────────────────────────────────────
+              SliverToBoxAdapter(
+                child: AchievementsSection(achievements: profile.achievements),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-            // ── Connected games ──────────────────────────────────
-            SliverToBoxAdapter(
-              child: ConnectedGamesSection(games: profile.connectedGames),
-            ),
+              // ── Connected games ──────────────────────────────────
+              SliverToBoxAdapter(
+                child: ConnectedGamesSection(games: profile.connectedGames),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-            // ── Settings ─────────────────────────────────────────
-            const SliverToBoxAdapter(child: SettingsSection()),
+              // ── Settings ─────────────────────────────────────────
+              const SliverToBoxAdapter(child: SettingsSection()),
 
-            // ── Nav bar padding ──────────────────────────────────
-            const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
-          ],
+              // ── Nav bar padding ──────────────────────────────────
+              const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
+            ],
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Text('Error loading profile: $error'),
+          ),
         ),
       ),
     );
   }
 
-  void _showEditSheet(BuildContext context, WidgetRef ref) {
-    final profile = ref.read(profileProvider);
+  void _showEditSheet(BuildContext context, profile) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
