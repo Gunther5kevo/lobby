@@ -39,12 +39,9 @@ class ProfileHeader extends ConsumerWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  GuildAvatar(
-                    initial: profile.avatarInitial,
-                    colorIndex: profile.avatarColorIndex,
+                  _ProfileAvatar(
+                    profile: profile,
                     size: 72,
-                    status: profile.status,
-                    dotBorderColor: AppColors.bgElevated,
                   ),
                   // Level badge
                   Positioned(
@@ -301,6 +298,25 @@ class _Divider extends StatelessWidget {
       width: 1,
       height: 28,
       color: AppColors.border,
+    );
+  }
+}
+
+// ── Profile avatar (network URL or gradient fallback) ──────────────────────
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.profile, required this.size});
+  final UserProfile profile;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return GuildAvatar(
+      initial: profile.avatarInitial,
+      colorIndex: profile.avatarColorIndex,
+      size: size,
+      status: profile.status,
+      dotBorderColor: AppColors.bgElevated,
     );
   }
 }

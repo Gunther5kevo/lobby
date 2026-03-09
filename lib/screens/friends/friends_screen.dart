@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/chat_model.dart';
 import '../../models/friend_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/friends_provider.dart';
+import '../../services/firestore_service.dart';
 import '../../widgets/section_header.dart';
 import '../conversation/conversation_screen.dart';
-import '../chats/chats_screen.dart' show _StubBuilder;
 import 'widgets/filter_chips_row.dart';
 import 'widgets/friend_list_tile.dart';
 import 'widgets/friend_request_tile.dart';
@@ -21,9 +23,11 @@ class FriendsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sections  = ref.watch(friendSectionsProvider);
-    final requests  = ref.watch(friendRequestsProvider);
-    final party     = ref.watch(partyMembersProvider);
+    final sections      = ref.watch(friendSectionsProvider);
+    final requestsAsync = ref.watch(friendRequestsProvider);
+    final party         = ref.watch(partyMembersProvider);
+
+    final requests = requestsAsync.valueOrNull ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -34,86 +38,19 @@ class FriendsScreen extends ConsumerWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── App bar ───────────────────────────────────────
                 FriendsAppBar(
                   onAddFriend: () => _showAddFriendSheet(context),
                 ),
-
-                // ── Filter chips ──────────────────────────────────
                 const FriendFilterChipsRow(),
-
-                // ── Online strip ──────────────────────────────────
                 const OnlineStrip(),
-
                 const SizedBox(height: 6),
-
-                // ── List ──────────────────────────────────────────
                 Expanded(
-                  child: sections.isEmpty && requests.isEmpty
-                      ? _EmptyState()
-                      : CustomScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          slivers: [
-                            // Pending requests section
-                            if (requests.isNotEmpty) ...[
-                              SliverToBoxAdapter(
-                                child: SectionHeader(
-                                  title:
-                                      'Requests (${requests.length})',
-                                ),
-                              ),
-                              SliverList.separated(
-                                itemCount: requests.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(indent: 80, height: 0),
-                                itemBuilder: (_, i) =>
-                                    FriendRequestTile(request: requests[i]),
-                              ),
-                            ],
-
-                            // In game
-                            if (sections.inGame.isNotEmpty)
-                              ..._buildSection(
-                                context, ref,
-                                title: 'In Game',
-                                friends: sections.inGame,
-                              ),
-
-                            // Online
-                            if (sections.online.isNotEmpty)
-                              ..._buildSection(
-                                context, ref,
-                                title: 'Online',
-                                friends: sections.online,
-                              ),
-
-                            // Idle
-                            if (sections.idle.isNotEmpty)
-                              ..._buildSection(
-                                context, ref,
-                                title: 'Idle',
-                                friends: sections.idle,
-                              ),
-
-                            // Offline
-                            if (sections.offline.isNotEmpty)
-                              ..._buildSection(
-                                context, ref,
-                                title: 'Offline',
-                                friends: sections.offline,
-                              ),
-
-                            // Bottom padding for nav bar + FAB
-                            const SliverPadding(
-                              padding: EdgeInsets.only(bottom: 100),
-                            ),
-                          ],
-                        ),
+                  child: _buildBody(context, ref, sections, requests),
                 ),
               ],
             ),
 
-            // ── Party FAB ─────────────────────────────────────────
+            // Party FAB
             if (party.isNotEmpty)
               Positioned(
                 right: 16,
@@ -129,30 +66,99 @@ class FriendsScreen extends ConsumerWidget {
     );
   }
 
-  List<SliverWidget> _buildSection(
+  Widget _buildBody(
     BuildContext context,
-    WidgetRef ref, {
-    required String title,
-    required List<Friend> friends,
-  }) {
+    WidgetRef ref,
+    FriendSections sections,
+    List<FriendRequest> requests,
+  ) {
+    final friendsAsync = ref.watch(friendListProvider);
+
+    // Show spinner only on first load
+    if (friendsAsync.isLoading && friendsAsync.valueOrNull == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: AppColors.accent, strokeWidth: 2,
+        ),
+      );
+    }
+
+    if (sections.isEmpty && requests.isEmpty) {
+      return _EmptyState();
+    }
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // Pending requests
+        if (requests.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: SectionHeader(title: 'Requests (${requests.length})'),
+          ),
+          SliverList.separated(
+            itemCount: requests.length,
+            separatorBuilder: (_, __) => const Divider(indent: 80, height: 0),
+            itemBuilder: (_, i) => FriendRequestTile(request: requests[i]),
+          ),
+        ],
+
+        if (sections.inGame.isNotEmpty)
+          ..._buildSection(context, ref, 'In Game', sections.inGame),
+        if (sections.online.isNotEmpty)
+          ..._buildSection(context, ref, 'Online', sections.online),
+        if (sections.idle.isNotEmpty)
+          ..._buildSection(context, ref, 'Idle', sections.idle),
+        if (sections.offline.isNotEmpty)
+          ..._buildSection(context, ref, 'Offline', sections.offline),
+
+        const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+      ],
+    );
+  }
+
+  List<Widget> _buildSection(
+    BuildContext context,
+    WidgetRef ref,
+    String title,
+    List<Friend> friends,
+  ) {
     return [
       SliverToBoxAdapter(child: SectionHeader(title: title)),
       SliverList.separated(
         itemCount: friends.length,
-        separatorBuilder: (_, __) =>
-            const Divider(indent: 80, height: 0),
+        separatorBuilder: (_, __) => const Divider(indent: 80, height: 0),
         itemBuilder: (_, i) {
           final f = friends[i];
           return FriendListTile(
             friend: f,
-            onMessage: () {
-              // Build a minimal ChatPreview to open conversation
-              // In prod this would be looked up from the chat repo
-            },
+            onMessage: () => _openDm(context, ref, f),
           );
         },
       ),
     ];
+  }
+
+  void _openDm(BuildContext context, WidgetRef ref, Friend friend) {
+    final myUid = ref.read(currentUidRequiredProvider);
+    final uids  = [myUid, friend.id]..sort();
+    final chatId = uids.join('_');
+
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ConversationScreen(
+        chat: ChatPreview(
+          id:              chatId,
+          name:            friend.name,
+          avatarInitial:   friend.avatarInitial,
+          avatarColorIndex: friend.avatarColorIndex,
+          lastMessage:     '',
+          lastMessageType: MessagePreviewType.text,
+          timestamp:       DateTime.now(),
+          status:          friend.status,
+          theirUid:        friend.id,
+        ),
+        theirUid: friend.id,
+      ),
+    ));
   }
 
   void _showAddFriendSheet(BuildContext context) {
@@ -180,8 +186,6 @@ class FriendsScreen extends ConsumerWidget {
   }
 }
 
-// ── Section helper type ────────────────────────────────────────────────────
-
 typedef SliverWidget = Widget;
 
 // ── Empty state ────────────────────────────────────────────────────────────
@@ -197,15 +201,14 @@ class _EmptyState extends StatelessWidget {
               size: 52, color: AppColors.textMuted),
           const SizedBox(height: 14),
           Text(
-            'No friends found',
+            'No friends yet',
             style: AppTextStyles.chatName.copyWith(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted, fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Try a different filter or add new friends',
+            'Add friends to start playing together',
             style: AppTextStyles.chatPreview,
           ),
         ],
@@ -251,8 +254,7 @@ class _PartyFAB extends StatelessWidget {
             Text(
               'Party ($count)',
               style: AppTextStyles.chatName.copyWith(
-                color: Colors.white,
-                fontSize: 14,
+                color: Colors.white, fontSize: 14,
               ),
             ),
           ],

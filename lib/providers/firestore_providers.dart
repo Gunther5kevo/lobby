@@ -189,8 +189,16 @@ class FriendsActionNotifier extends StateNotifier<AsyncValue<void>> {
   FirestoreService get _fs    => _ref.read(firestoreServiceProvider);
   String           get _myUid => _ref.read(currentUidRequiredProvider);
 
-  Future<void> sendRequest(String toUid) async =>
-      _fs.sendFriendRequest(fromUid: _myUid, toUid: toUid);
+  Future<void> sendRequest(String toUid) async {
+    final profile = await _fs.getProfile(_myUid);
+    await _fs.sendFriendRequest(
+      fromUid:              _myUid,
+      toUid:                toUid,
+      fromDisplayName:      profile?['displayName'] as String?,
+      fromHandle:           profile?['handle'] as String?,
+      fromAvatarColorIndex: profile?['avatarColorIndex'] as int? ?? 0,
+    );
+  }
 
   Future<void> acceptRequest(String requestId, String theirUid) async =>
       _fs.acceptFriendRequest(

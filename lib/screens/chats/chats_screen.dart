@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/chat_model.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat_list_tile.dart';
 import '../../widgets/guild_search_bar.dart';
@@ -16,15 +17,27 @@ class ChatsScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatsScreenState extends ConsumerState<ChatsScreen> {
-  // Track which chat is tapped (active highlight)
   String? _activeChatId;
+
+  void _openChat(ChatPreview chat) {
+    setState(() => _activeChatId = chat.id);
+    ref.read(chatListProvider.notifier).markAsRead(chat.id);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ConversationScreen(
+          chat:     chat,
+          theirUid: chat.theirUid ?? chat.id, // real UID when available
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pinned = ref.watch(pinnedChatsProvider);
-    final recent = ref.watch(recentChatsProvider);
+    final pinned    = ref.watch(pinnedChatsProvider);
+    final recent    = ref.watch(recentChatsProvider);
     final hasResults = pinned.isNotEmpty || recent.isNotEmpty;
-    final query = ref.watch(searchQueryProvider);
+    final query     = ref.watch(searchQueryProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -33,58 +46,37 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── App header ─────────────────────────────────────
             _ChatsHeader(),
-
-            // ── Search bar ─────────────────────────────────────
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
               child: GuildSearchBar(),
             ),
-
             const SizedBox(height: 4),
-
-            // ── List ───────────────────────────────────────────
             Expanded(
               child: hasResults
                   ? CustomScrollView(
                       physics: const BouncingScrollPhysics(),
                       slivers: [
-                        // Pinned section
                         if (pinned.isNotEmpty) ...[
                           const SliverToBoxAdapter(
                             child: SectionHeader(title: 'Pinned'),
                           ),
                           SliverList.separated(
                             itemCount: pinned.length,
-                            separatorBuilder: (_, __) => const Divider(
-                              indent: 83,
-                              height: 0,
-                            ),
+                            separatorBuilder: (_, __) =>
+                                const Divider(indent: 83, height: 0),
                             itemBuilder: (context, i) {
                               final chat = pinned[i];
                               return ChatListTile(
                                 chat: chat,
                                 isActive: _activeChatId == chat.id,
-                                onTap: () {
-                                  setState(() => _activeChatId = chat.id);
-                                  ref
-                                      .read(chatListProvider.notifier)
-                                      .markAsRead(chat.id);
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ConversationScreen(chat: chat),
-                                    ),
-                                  );
-                                },
+                                onTap: () => _openChat(chat),
                                 onLongPress: () =>
                                     _showContextMenu(context, chat.id),
                               );
                             },
                           ),
                         ],
-
-                        // Recent section
                         if (recent.isNotEmpty) ...[
                           SliverToBoxAdapter(
                             child: SectionHeader(
@@ -93,34 +85,20 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
                           ),
                           SliverList.separated(
                             itemCount: recent.length,
-                            separatorBuilder: (_, __) => const Divider(
-                              indent: 83,
-                              height: 0,
-                            ),
+                            separatorBuilder: (_, __) =>
+                                const Divider(indent: 83, height: 0),
                             itemBuilder: (context, i) {
                               final chat = recent[i];
                               return ChatListTile(
                                 chat: chat,
                                 isActive: _activeChatId == chat.id,
-                                onTap: () {
-                                  setState(() => _activeChatId = chat.id);
-                                  ref
-                                      .read(chatListProvider.notifier)
-                                      .markAsRead(chat.id);
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ConversationScreen(chat: chat),
-                                    ),
-                                  );
-                                },
+                                onTap: () => _openChat(chat),
                                 onLongPress: () =>
                                     _showContextMenu(context, chat.id),
                               );
                             },
                           ),
                         ],
-
-                        // Bottom padding for nav bar
                         const SliverPadding(
                           padding: EdgeInsets.only(bottom: 16),
                         ),
@@ -155,50 +133,30 @@ class _ChatsHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
       child: Row(
         children: [
-          // App name
           RichText(
             text: TextSpan(
               children: [
-                TextSpan(
-                  text: 'Guild',
-                  style: AppTextStyles.appName,
-                ),
+                TextSpan(text: 'Guild', style: AppTextStyles.appName),
                 TextSpan(
                   text: 'Chat',
-                  style: AppTextStyles.appName
-                      .copyWith(color: AppColors.accent),
+                  style: AppTextStyles.appName.copyWith(color: AppColors.accent),
                 ),
               ],
             ),
           ),
-
           const Spacer(),
-
-          // Info button
-          _HeaderIconButton(
-            icon: Icons.info_outline_rounded,
-            onTap: () {},
-          ),
-
+          _HeaderIconButton(icon: Icons.info_outline_rounded, onTap: () {}),
           const SizedBox(width: 8),
-
-          // New chat button (has accent dot indicator)
           Stack(
             clipBehavior: Clip.none,
             children: [
-              _HeaderIconButton(
-                icon: Icons.edit_outlined,
-                onTap: () {},
-              ),
+              _HeaderIconButton(icon: Icons.edit_outlined, onTap: () {}),
               Positioned(
-                top: -2,
-                right: -2,
+                top: -2, right: -2,
                 child: Container(
-                  width: 8,
-                  height: 8,
+                  width: 8, height: 8,
                   decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
+                    color: AppColors.accent, shape: BoxShape.circle,
                   ),
                 ),
               ),
@@ -212,7 +170,6 @@ class _ChatsHeader extends StatelessWidget {
 
 class _HeaderIconButton extends StatelessWidget {
   const _HeaderIconButton({required this.icon, required this.onTap});
-
   final IconData icon;
   final VoidCallback onTap;
 
@@ -221,8 +178,7 @@ class _HeaderIconButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 36, height: 36,
         decoration: BoxDecoration(
           color: AppColors.bgElevated,
           borderRadius: BorderRadius.circular(10),
@@ -250,15 +206,13 @@ class _EmptyState extends StatelessWidget {
             query.isEmpty
                 ? Icons.chat_bubble_outline_rounded
                 : Icons.search_off_rounded,
-            size: 52,
-            color: AppColors.textMuted,
+            size: 52, color: AppColors.textMuted,
           ),
           const SizedBox(height: 14),
           Text(
             query.isEmpty ? 'No chats yet' : 'No results for "$query"',
             style: AppTextStyles.chatName.copyWith(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted, fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 6),
@@ -274,7 +228,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Context menu (long press) ──────────────────────────────────────────────
+// ── Context menu ───────────────────────────────────────────────────────────
 
 class _ChatContextMenu extends ConsumerWidget {
   const _ChatContextMenu({required this.chatId});
@@ -282,26 +236,21 @@ class _ChatContextMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chat = ref
-        .read(chatListProvider)
-        .firstWhere((c) => c.id == chatId);
+    final chat = ref.read(chatListProvider).firstWhere((c) => c.id == chatId);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Container(
-            width: 36,
-            height: 4,
+            width: 36, height: 4,
             decoration: BoxDecoration(
               color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 16),
-
           _ContextAction(
             icon: Icons.done_all_rounded,
             label: 'Mark as read',
@@ -349,7 +298,6 @@ class _ContextAction extends StatelessWidget {
     required this.onTap,
     this.color,
   });
-
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -360,13 +308,9 @@ class _ContextAction extends StatelessWidget {
     final c = color ?? AppColors.textSecondary;
     return ListTile(
       leading: Icon(icon, color: c, size: 22),
-      title: Text(
-        label,
-        style: AppTextStyles.chatName.copyWith(
-          color: c,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      title: Text(label,
+          style: AppTextStyles.chatName
+              .copyWith(color: c, fontWeight: FontWeight.w500)),
       onTap: onTap,
       horizontalTitleGap: 12,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),

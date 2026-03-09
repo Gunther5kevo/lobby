@@ -4,27 +4,29 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/message_model.dart';
-import '../../../providers/conversation_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/rtdb_providers.dart';
 import 'voice_message_bubble.dart';
 import 'game_invite_card.dart';
 import 'image_message_bubble.dart';
 import 'reaction_row.dart';
 
 /// Top-level message row.
-/// Handles alignment (sent left vs received right),
-/// routing content to the correct sub-widget,
-/// timestamp, status ticks, and reactions.
 class MessageBubble extends ConsumerWidget {
   const MessageBubble({
     super.key,
     required this.message,
     required this.chatId,
     this.showAvatar = true,
+    this.theirInitial = '?',
+    this.theirColorIndex = 0,
   });
 
   final Message message;
   final String chatId;
   final bool showAvatar;
+  final String theirInitial;
+  final int theirColorIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,12 +43,15 @@ class MessageBubble extends ConsumerWidget {
             mainAxisAlignment:
                 isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
-              // Other person's avatar placeholder (maintains alignment)
+              // Other person's avatar placeholder
               if (!isMine)
                 SizedBox(
-                  width: 28 + 8, // avatar width + gap
+                  width: 28 + 8,
                   child: showAvatar
-                      ? _MiniAvatar()
+                      ? _MiniAvatar(
+                          initial:    theirInitial,
+                          colorIndex: theirColorIndex,
+                        )
                       : const SizedBox.shrink(),
                 ),
 
@@ -93,8 +98,14 @@ class MessageBubble extends ConsumerWidget {
                 messageId: message.id,
                 isMine: isMine,
                 onReact: (id, emoji) => ref
-                    .read(messagesProvider(chatId).notifier)
-                    .addReaction(id, emoji),
+                    .read(rtdbServiceProvider)
+                    .toggleReaction(
+                      chatId: chatId,
+                      msgId:  id,
+                      emoji:  emoji,
+                      uid:    ref.read(currentUidRequiredProvider),
+                      isDm:   true,
+                    ),
               ),
             ),
         ],
@@ -125,11 +136,11 @@ class MessageBubble extends ConsumerWidget {
           invite: message.gameInvite!,
           isMine: message.isMine,
           onAccept: () => ref
-              .read(messagesProvider(chatId).notifier)
-              .respondToGameInvite(message.id, GameInviteStatus.accepted),
+              .read(rtdbServiceProvider)
+              .updateMessageStatus(chatId, message.id, 'accepted'),
           onDecline: () => ref
-              .read(messagesProvider(chatId).notifier)
-              .respondToGameInvite(message.id, GameInviteStatus.declined),
+              .read(rtdbServiceProvider)
+              .updateMessageStatus(chatId, message.id, 'declined'),
         );
     }
   }
@@ -180,15 +191,21 @@ class _TextBubble extends StatelessWidget {
 // ── Mini avatar for received messages ─────────────────────────────────────
 
 class _MiniAvatar extends StatelessWidget {
+  const _MiniAvatar({required this.initial, required this.colorIndex});
+  final String initial;
+  final int colorIndex;
+
   @override
   Widget build(BuildContext context) {
+    final gradient = AppColors.avatarGradients[
+        colorIndex.clamp(0, AppColors.avatarGradients.length - 1)];
     return Container(
       width: 28,
       height: 28,
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4A2D7A), Color(0xFF6040A0)],
+        gradient: LinearGradient(
+          colors: gradient,  // already List<Color>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -196,7 +213,7 @@ class _MiniAvatar extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        'K',
+        initial.isNotEmpty ? initial[0].toUpperCase() : '?',
         style: AppTextStyles.avatarInitialSm.copyWith(fontSize: 12),
       ),
     );

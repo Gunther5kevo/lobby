@@ -22,8 +22,7 @@ class PartyNotifier extends StateNotifier<Party?> {
 
   /// Creates a new party session from the currently selected party members.
   void createParty() {
-    final selectedFriends = _ref
-        .read(friendListProvider)
+    final selectedFriends = (_ref.read(friendListProvider).valueOrNull ?? [])
         .where((f) => f.isPartyMember)
         .toList();
 
@@ -39,14 +38,7 @@ class PartyNotifier extends StateNotifier<Party?> {
   void disband() {
     _queueTimer?.cancel();
     state = null;
-
-    // Clear party flags on all friends
-    final friends = _ref.read(friendListProvider);
-    for (final f in friends) {
-      if (f.isPartyMember) {
-        _ref.read(friendListProvider.notifier).togglePartyMember(f.id);
-      }
-    }
+    clearPartyMembers(_ref);
   }
 
   // ── Ready state ────────────────────────────────────────────────

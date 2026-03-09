@@ -35,13 +35,14 @@ class ChatPreview extends Equatable {
     this.isMuted = false,
     this.isPinned = false,
     this.isGroup = false,
-    this.avatarEmoji, // for groups / special contacts
+    this.avatarEmoji,
+    this.theirUid, // UID of the other participant (null for seed/group chats)
   });
 
   final String id;
   final String name;
-  final String avatarInitial;  // single letter or emoji
-  final int avatarColorIndex;  // index into AppColors.avatarGradients
+  final String avatarInitial;
+  final int avatarColorIndex;
   final String lastMessage;
   final MessagePreviewType lastMessageType;
   final DateTime timestamp;
@@ -50,14 +51,15 @@ class ChatPreview extends Equatable {
   final bool isMuted;
   final bool isPinned;
   final bool isGroup;
-  final String? avatarEmoji; // shown instead of initial when set
+  final String? avatarEmoji;
+  final String? theirUid;
 
   @override
   List<Object?> get props => [
         id, name, avatarInitial, avatarColorIndex,
         lastMessage, lastMessageType, timestamp,
         status, unreadCount, isMuted, isPinned,
-        isGroup, avatarEmoji,
+        isGroup, avatarEmoji, theirUid,
       ];
 
   ChatPreview copyWith({
@@ -83,6 +85,7 @@ class ChatPreview extends Equatable {
       isPinned: isPinned ?? this.isPinned,
       isGroup: isGroup,
       avatarEmoji: avatarEmoji,
+      theirUid: theirUid,
     );
   }
 }

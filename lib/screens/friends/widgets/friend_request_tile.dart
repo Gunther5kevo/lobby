@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/friend_model.dart';
-import '../../../providers/friends_provider.dart';
+import '../../../providers/firestore_providers.dart';
 import '../../../widgets/guild_avatar.dart';
 
 /// Incoming friend request row.
@@ -100,8 +100,8 @@ class FriendRequestTile extends ConsumerWidget {
                 onTap: () {
                   HapticFeedback.lightImpact();
                   ref
-                      .read(friendRequestsProvider.notifier)
-                      .decline(request.id);
+                      .read(friendsActionProvider.notifier)
+                      .declineRequest(request.id);
                 },
               ),
               const SizedBox(width: 7),
@@ -114,8 +114,8 @@ class FriendRequestTile extends ConsumerWidget {
                 onTap: () {
                   HapticFeedback.lightImpact();
                   ref
-                      .read(friendRequestsProvider.notifier)
-                      .accept(request.id);
+                      .read(friendsActionProvider.notifier)
+                      .acceptRequest(request.id, request.friend.id);
                 },
               ),
             ],

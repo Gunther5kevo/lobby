@@ -131,6 +131,38 @@ class Message extends Equatable {
   final MessageStatus status;
   final bool isMine;
 
+  /// Build a [Message] from an RTDB map (as returned by [dmMessagesStream]).
+  /// [myUid] is used to set [isMine] and derive reactions.
+  factory Message.fromRtdb(Map<String, dynamic> m, String myUid) {
+    final type = MessageType.values.firstWhere(
+      (t) => t.name == (m['type'] as String? ?? 'text'),
+      orElse: () => MessageType.text,
+    );
+
+    // Reactions: stored as { emoji: { uid: true } } in RTDB
+    final reactionsRaw = m['reactions'] as Map? ?? {};
+    final reactions = reactionsRaw.entries.map((e) {
+      final voters = (e.value as Map?)?.keys.length ?? 0;
+      return Reaction(emoji: e.key as String, count: voters);
+    }).where((r) => r.count > 0).toList();
+
+    return Message(
+      id:        m['id']        as String? ?? '',
+      senderId:  m['senderUid'] as String? ?? '',
+      timestamp: m['timestamp'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(m['timestamp'] as int)
+          : DateTime.now(),
+      type:      type,
+      text:      m['text'] as String?,
+      reactions: reactions,
+      status: MessageStatus.values.firstWhere(
+        (s) => s.name == (m['status'] as String? ?? 'sent'),
+        orElse: () => MessageStatus.sent,
+      ),
+      isMine: (m['senderUid'] as String? ?? '') == myUid,
+    );
+  }
+
   Message copyWith({
     List<Reaction>? reactions,
     GameInviteData? gameInvite,
@@ -185,7 +217,7 @@ final List<Message> seedMessages = [
     senderId: 'kraken',
     timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
     type: MessageType.voiceNote,
-    voiceNote: const VoiceNote(
+    voiceNote: VoiceNote(
       durationSeconds: 18,
       waveformData: [
         0.3, 0.5, 0.7, 0.4, 0.9, 0.6, 0.4, 0.8,
@@ -194,7 +226,7 @@ final List<Message> seedMessages = [
       ],
       playedFraction: 0.45,
     ),
-    reactions: const [Reaction(emoji: '😂', count: 2)],
+    reactions: [const Reaction(emoji: '😂', count: 2)],
     status: MessageStatus.read,
     isMine: false,
   ),
@@ -223,7 +255,7 @@ final List<Message> seedMessages = [
       emoji: '🏆',
       gradientColors: [0xFF1e2d5a, 0xFF0e1823],
     ),
-    reactions: const [
+    reactions: [
       Reaction(emoji: '🔥', count: 3),
       Reaction(emoji: '💪', count: 1),
     ],

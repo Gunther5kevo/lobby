@@ -118,33 +118,77 @@ class FirestoreService {
     await batch.commit();
   }
 
+  // ── User search ────────────────────────────────────────────────
+
+  /// Searches users by handle prefix. [query] is raw input (with or without #).
+  /// Excludes [excludeUid] (the current user). Returns up to 10 results.
+  Future<List<Map<String, dynamic>>> searchUsersByHandle(
+    String query, {
+    required String excludeUid,
+  }) async {
+    if (query.trim().isEmpty) return [];
+    final q = query.trim().toLowerCase().replaceFirst(RegExp(r'^#'), '');
+    if (q.isEmpty) return [];
+    final prefix = '#$q';
+    final snap = await _users
+        .where('handle', isGreaterThanOrEqualTo: prefix)
+        .where('handle', isLessThan: '$prefix\uf8ff')
+        .limit(10)
+        .get();
+    return snap.docs
+        .map((d) => d.data())
+        .where((d) => d['uid'] != excludeUid)
+        .toList();
+  }
+
   // ── Friend requests ────────────────────────────────────────────
 
   /// Stream of incoming friend requests for [uid].
+  /// Enriches each request with the sender's profile fields so the UI
+  /// can show name/avatar without a separate lookup.
   Stream<List<Map<String, dynamic>>> incomingRequestsStream(String uid) {
     return _friendRequests
         .where('toUid', isEqualTo: uid)
         .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((d) {
-              final data = d.data();
-              data['id'] = d.id;
-              return data;
-            }).toList());
+        .asyncMap((snap) async {
+      final results = <Map<String, dynamic>>[];
+      for (final d in snap.docs) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = d.id;
+        // Enrich with sender profile if not stored inline on the request
+        if (data['fromDisplayName'] == null) {
+          final profile = await getProfile(data['fromUid'] as String);
+          if (profile != null) {
+            data['fromDisplayName']      = profile['displayName'];
+            data['fromHandle']           = profile['handle'];
+            data['fromAvatarColorIndex'] = profile['avatarColorIndex'] ?? 0;
+          }
+        }
+        results.add(data);
+      }
+      return results;
+    });
   }
 
   Future<void> sendFriendRequest({
     required String fromUid,
     required String toUid,
+    // Sender display info stored on the doc — avoids a join on every snapshot
+    String? fromDisplayName,
+    String? fromHandle,
+    int fromAvatarColorIndex = 0,
   }) async {
-    // Idempotent — use composite key so duplicates can't be created
     final docId = '${fromUid}_$toUid';
     await _friendRequests.doc(docId).set({
-      'fromUid':   fromUid,
-      'toUid':     toUid,
-      'status':    'pending',
-      'createdAt': FieldValue.serverTimestamp(),
+      'fromUid':               fromUid,
+      'toUid':                 toUid,
+      'status':                'pending',
+      'createdAt':             FieldValue.serverTimestamp(),
+      if (fromDisplayName != null) 'fromDisplayName':      fromDisplayName,
+      if (fromHandle != null)      'fromHandle':           fromHandle,
+      'fromAvatarColorIndex':  fromAvatarColorIndex,
     });
   }
 

@@ -5,166 +5,151 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/chat_model.dart';
 import '../../models/message_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/conversation_provider.dart';
+import '../../services/firestore_service.dart';
 import 'widgets/conversation_app_bar.dart';
 import 'widgets/conversation_input_bar.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/typing_indicator.dart';
 
-/// Full conversation screen.
+/// Full DM conversation screen.
 ///
-/// Pass a [ChatPreview] when navigating to this screen:
-///   Navigator.of(context).push(MaterialPageRoute(
-///     builder: (_) => ConversationScreen(chat: chat),
+/// Navigate to this screen with:
+///   Navigator.push(context, MaterialPageRoute(
+///     builder: (_) => ConversationScreen(
+///       chat:     chatPreview,   // for display (name, avatar, status)
+///       theirUid: otherUserUid,  // needed to build chatId + send messages
+///     ),
 ///   ));
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({
     super.key,
     required this.chat,
+    required this.theirUid,
   });
 
   final ChatPreview chat;
+  final String theirUid;
 
   @override
-  ConsumerState<ConversationScreen> createState() =>
-      _ConversationScreenState();
+  ConsumerState<ConversationScreen> createState() => _ConversationScreenState();
 }
 
-class _ConversationScreenState
-    extends ConsumerState<ConversationScreen> {
+class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
+  late final String _chatId;
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Deterministic chat ID — same algorithm used in FirestoreService
+    final myUid = ref.read(currentUidRequiredProvider);
+    final uids  = [myUid, widget.theirUid]..sort();
+    _chatId = uids.join('_');
+
+    // Mark all messages as read when the screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) => _markRead());
+  }
+
+  Future<void> _markRead() async {
+    final myUid = ref.read(currentUidRequiredProvider);
+    try {
+      await FirestoreService().markDmRead(_chatId, myUid);
+    } catch (_) {}
   }
 
   void _scrollToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
       if (animated) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          target,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
         );
       } else {
-        _scrollController.jumpTo(
-          _scrollController.position.maxScrollExtent,
-        );
+        _scrollController.jumpTo(target);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(messagesProvider(widget.chat.id));
-    final isTyping = ref.watch(typingProvider);
+    final messagesAsync = ref.watch(messagesProvider(_chatId));
+    final isTyping      = ref.watch(isTypingProvider(_chatId));
 
-    // Scroll to bottom whenever messages change
-    ref.listen(messagesProvider(widget.chat.id), (_, __) {
-      _scrollToBottom();
+    // Scroll to bottom on new messages
+    ref.listen(messagesProvider(_chatId), (_, next) {
+      if (next.hasValue) _scrollToBottom();
     });
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       appBar: ConversationAppBar(
-        name: widget.chat.name,
-        statusText: _statusText(widget.chat.status),
-        status: widget.chat.status,
-        avatarInitial: widget.chat.avatarInitial,
+        name:            widget.chat.name,
+        statusText:      _statusText(widget.chat.status),
+        status:          widget.chat.status,
+        avatarInitial:   widget.chat.avatarInitial,
         avatarColorIndex: widget.chat.avatarColorIndex,
-        avatarEmoji: widget.chat.avatarEmoji,
-        onInvite: () => _sendGameInvite(context),
-        onMoreOptions: () => _showMoreOptions(context),
+        avatarEmoji:     widget.chat.avatarEmoji,
+        onInvite:        () => _sendGameInvite(context),
+        onMoreOptions:   () => _showMoreOptions(context),
       ),
       body: Column(
         children: [
-          // ── Message list ─────────────────────────────────────
+          // ── Message list ───────────────────────────────────────
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount: messages.length + (isTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                // Typing indicator always at the end
-                if (isTyping && index == messages.length) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: 4, bottom: 4),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 36), // avatar space
-                        TypingIndicator(),
-                      ],
-                    ),
-                  );
-                }
-
-                final message = messages[index];
-                final prevMessage = index > 0 ? messages[index - 1] : null;
-
-                // Show date divider when the date changes between messages
-                final showDateDivider = prevMessage == null ||
-                    !_isSameDay(prevMessage.timestamp, message.timestamp);
-
-                // Show mini avatar only on first message in a group
-                final showAvatar = !message.isMine &&
-                    (prevMessage == null ||
-                        prevMessage.isMine ||
-                        prevMessage.senderId != message.senderId);
-
-                return Column(
-                  children: [
-                    if (showDateDivider)
-                      _DateDivider(date: message.timestamp),
-                    MessageBubble(
-                      message: message,
-                      chatId: widget.chat.id,
-                      showAvatar: showAvatar,
-                    ),
-                  ],
-                );
-              },
+            child: messagesAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.accent, strokeWidth: 2,
+                ),
+              ),
+              error: (e, _) => Center(
+                child: Text(
+                  'Could not load messages',
+                  style: AppTextStyles.chatPreview
+                      .copyWith(color: AppColors.textMuted),
+                ),
+              ),
+              data: (messages) => _MessageList(
+                messages:       messages,
+                isTyping:       isTyping,
+                scrollController: _scrollController,
+                chatId:         _chatId,
+                theirName:      widget.chat.name,
+                theirInitial:   widget.chat.avatarInitial,
+                theirColorIndex: widget.chat.avatarColorIndex,
+              ),
             ),
           ),
 
-          // ── Input bar ────────────────────────────────────────
-          ConversationInputBar(chatId: widget.chat.id),
+          // ── Input bar ──────────────────────────────────────────
+          ConversationInputBar(
+            chatId:   _chatId,
+            theirUid: widget.theirUid,
+          ),
         ],
       ),
     );
   }
 
-  // ── Helpers ──────────────────────────────────────────────────
-
-  String _statusText(UserStatus status) {
-    switch (status) {
-      case UserStatus.online:  return 'Online';
-      case UserStatus.inGame:  return 'Playing Valorant · Plat II';
-      case UserStatus.idle:    return 'Idle';
-      case UserStatus.offline: return 'Last seen recently';
-    }
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  String _statusText(UserStatus status) => switch (status) {
+    UserStatus.online  => 'Online',
+    UserStatus.inGame  => 'In Game',
+    UserStatus.idle    => 'Idle',
+    UserStatus.offline => 'Last seen recently',
+  };
 
   void _sendGameInvite(BuildContext context) {
-    ref.read(messagesProvider(widget.chat.id).notifier);
-    // In prod: push a game-picker bottom sheet then send an invite message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Game invite sent!'),
-        backgroundColor: AppColors.bgElevated,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Game invite sent!'),
+      backgroundColor: AppColors.bgElevated,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   void _showMoreOptions(BuildContext context) {
@@ -181,6 +166,90 @@ class _ConversationScreenState
   }
 }
 
+// ── Message list ───────────────────────────────────────────────────────────
+
+class _MessageList extends StatelessWidget {
+  const _MessageList({
+    required this.messages,
+    required this.isTyping,
+    required this.scrollController,
+    required this.chatId,
+    required this.theirName,
+    required this.theirInitial,
+    required this.theirColorIndex,
+  });
+
+  final List<Message> messages;
+  final bool          isTyping;
+  final ScrollController scrollController;
+  final String chatId;
+  final String theirName;
+  final String theirInitial;
+  final int    theirColorIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemCount = messages.length + (isTyping ? 1 : 0);
+
+    if (itemCount == 0) {
+      return Center(
+        child: Text(
+          'No messages yet.\nSay hello! 👋',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.chatPreview
+              .copyWith(color: AppColors.textMuted, height: 1.6),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: scrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        // Typing indicator pinned at end
+        if (isTyping && index == messages.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: Row(
+              children: [
+                const SizedBox(width: 36),
+                const TypingIndicator(),
+              ],
+            ),
+          );
+        }
+
+        final message  = messages[index];
+        final prev     = index > 0 ? messages[index - 1] : null;
+
+        final showDateDivider = prev == null ||
+            !_isSameDay(prev.timestamp, message.timestamp);
+
+        final showAvatar = !message.isMine &&
+            (prev == null || prev.isMine || prev.senderId != message.senderId);
+
+        return Column(
+          children: [
+            if (showDateDivider) _DateDivider(date: message.timestamp),
+            MessageBubble(
+              message:        message,
+              chatId:         chatId,
+              showAvatar:     showAvatar,
+              theirInitial:   theirInitial,
+              theirColorIndex: theirColorIndex,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
 // ── Date divider ───────────────────────────────────────────────────────────
 
 class _DateDivider extends StatelessWidget {
@@ -189,14 +258,12 @@ class _DateDivider extends StatelessWidget {
 
   String get _label {
     final now = DateTime.now();
-    if (_isSameDay(date, now)) return 'Today';
-    if (_isSameDay(date, now.subtract(const Duration(days: 1)))) {
-      return 'Yesterday';
-    }
+    if (_same(date, now)) return 'Today';
+    if (_same(date, now.subtract(const Duration(days: 1)))) return 'Yesterday';
     return DateFormat('MMMM d, y').format(date);
   }
 
-  bool _isSameDay(DateTime a, DateTime b) =>
+  bool _same(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   @override
@@ -208,10 +275,8 @@ class _DateDivider extends StatelessWidget {
           const Expanded(child: Divider()),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              _label,
-              style: AppTextStyles.chatTime.copyWith(fontSize: 11.5),
-            ),
+            child: Text(_label,
+                style: AppTextStyles.chatTime.copyWith(fontSize: 11.5)),
           ),
           const Expanded(child: Divider()),
         ],
@@ -220,7 +285,7 @@ class _DateDivider extends StatelessWidget {
   }
 }
 
-// ── Conversation options sheet ─────────────────────────────────────────────
+// ── Options sheet ──────────────────────────────────────────────────────────
 
 class _ConversationOptionsSheet extends StatelessWidget {
   const _ConversationOptionsSheet({required this.contactName});
@@ -234,11 +299,9 @@ class _ConversationOptionsSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Center(
             child: Container(
-              width: 36,
-              height: 4,
+              width: 36, height: 4,
               decoration: BoxDecoration(
                 color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
@@ -290,13 +353,9 @@ class _OptionTile extends StatelessWidget {
     final c = color ?? AppColors.textSecondary;
     return ListTile(
       leading: Icon(icon, color: c, size: 22),
-      title: Text(
-        label,
-        style: AppTextStyles.chatName.copyWith(
-          color: c,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      title: Text(label,
+          style: AppTextStyles.chatName
+              .copyWith(color: c, fontWeight: FontWeight.w500)),
       onTap: onTap,
       horizontalTitleGap: 12,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),

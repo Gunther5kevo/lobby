@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/chat_model.dart';
 import '../../../models/friend_model.dart';
+import '../../../providers/firestore_providers.dart';
 import '../../../providers/friends_provider.dart';
 import '../../../widgets/guild_avatar.dart';
 
@@ -259,7 +260,7 @@ class _PartyBtn extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        ref.read(friendListProvider.notifier).togglePartyMember(friend.id);
+        togglePartyMember(ref, friend.id);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -345,7 +346,7 @@ class _FriendContextMenu extends ConsumerWidget {
             label: 'Remove Friend',
             color: AppColors.danger,
             onTap: () {
-              ref.read(friendListProvider.notifier).removeFriend(friend.id);
+              ref.read(friendsActionProvider.notifier).removeFriend(friend.id);
               Navigator.pop(context);
             },
           ),

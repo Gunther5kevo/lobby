@@ -109,9 +109,7 @@ class PartyInviteSheet extends ConsumerWidget {
                           Positioned(
                             top: -3, right: -3,
                             child: GestureDetector(
-                              onTap: () => ref
-                                  .read(friendListProvider.notifier)
-                                  .togglePartyMember(m.id),
+                              onTap: () => togglePartyMember(ref, m.id),
                               child: Container(
                                 width: 18, height: 18,
                                 decoration: const BoxDecoration(

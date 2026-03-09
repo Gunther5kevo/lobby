@@ -1,4 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'firestore_service.dart';
 
@@ -9,13 +10,16 @@ class FcmService {
     FirebaseMessaging? messaging,
     FlutterLocalNotificationsPlugin? localNotifications,
     FirestoreService? firestoreService,
+    FirebaseAuth? auth,
   })  : _messaging           = messaging ?? FirebaseMessaging.instance,
         _localNotifications  = localNotifications ?? FlutterLocalNotificationsPlugin(),
-        _firestoreService    = firestoreService ?? FirestoreService();
+        _firestoreService    = firestoreService ?? FirestoreService(),
+        _auth                = auth ?? FirebaseAuth.instance;
 
   final FirebaseMessaging _messaging;
   final FlutterLocalNotificationsPlugin _localNotifications;
   final FirestoreService _firestoreService;
+  final FirebaseAuth _auth;
 
   // Android notification channel — must match firebase_init.dart
   static const _channel = AndroidNotificationDetails(
@@ -50,7 +54,10 @@ class FcmService {
 
     // ── Token refresh ──────────────────────────────────────────
     _messaging.onTokenRefresh.listen((newToken) async {
-      await _firestoreService.saveFcmToken(uid, newToken);
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _firestoreService.saveFcmToken(currentUser.uid, newToken);
+      }
     });
 
     // ── Foreground messages ────────────────────────────────────

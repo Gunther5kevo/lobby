@@ -4,23 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../providers/conversation_provider.dart';
+import '../../../providers/rtdb_providers.dart';
 
 /// The full bottom input bar for the conversation screen.
-///
-/// States it handles:
-///  1. Idle — attach button + text field + voice record button
-///  2. Has text — send button replaces voice record button
-///  3. Recording — slide-to-cancel UI replaces the field
-///  4. Attachment sheet — slides up an options panel
 class ConversationInputBar extends ConsumerStatefulWidget {
   const ConversationInputBar({
     super.key,
     required this.chatId,
-    this.onSend,
+    required this.theirUid,
   });
 
   final String chatId;
-  final void Function(String text)? onSend;
+  final String theirUid;
 
   @override
   ConsumerState<ConversationInputBar> createState() =>
@@ -40,18 +35,26 @@ class _ConversationInputBarState
 
   void _onTextChanged(String value) {
     final hasText = value.trim().isNotEmpty;
-    if (hasText != _hasText) {
-      setState(() => _hasText = hasText);
-    }
+    if (hasText != _hasText) setState(() => _hasText = hasText);
     ref.read(inputTextProvider.notifier).state = value;
+    // Broadcast typing state to RTDB
+    ref.read(dmMessageNotifierProvider(widget.chatId).notifier)
+        .setTyping(widget.chatId, hasText);
   }
 
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    widget.onSend?.call(text);
-    ref.read(messagesProvider(widget.chatId).notifier).sendText(text);
+    ref.read(dmMessageNotifierProvider(widget.chatId).notifier).sendText(
+      chatId:   widget.chatId,
+      theirUid: widget.theirUid,
+      text:     text,
+    );
+    // Clear typing indicator
+    ref.read(dmMessageNotifierProvider(widget.chatId).notifier)
+        .setTyping(widget.chatId, false);
+
     _controller.clear();
     setState(() => _hasText = false);
     ref.read(inputTextProvider.notifier).state = '';
