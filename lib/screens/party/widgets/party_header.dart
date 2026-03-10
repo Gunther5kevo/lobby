@@ -89,7 +89,7 @@ class PartyHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.exit_to_app_rounded,
+                  const Icon(Icons.exit_to_app_rounded,
                       size: 14, color: AppColors.danger),
                   const SizedBox(width: 5),
                   Text(

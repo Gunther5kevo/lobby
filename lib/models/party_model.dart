@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 import '../models/friend_model.dart';
-import '../models/chat_model.dart';
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 

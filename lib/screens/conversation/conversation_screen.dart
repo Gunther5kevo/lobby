@@ -210,12 +210,12 @@ class _MessageList extends StatelessWidget {
       itemBuilder: (context, index) {
         // Typing indicator pinned at end
         if (isTyping && index == messages.length) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 4),
+          return const Padding(
+            padding: EdgeInsets.only(top: 4, bottom: 4),
             child: Row(
               children: [
-                const SizedBox(width: 36),
-                const TypingIndicator(),
+                SizedBox(width: 36),
+                TypingIndicator(),
               ],
             ),
           );

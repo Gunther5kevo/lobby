@@ -124,14 +124,14 @@ class FriendRequest extends Equatable {
 
 final List<Friend> seedFriends = [
   // ── In game ──────────────────────────────────────────────────
-  Friend(
+  const Friend(
     id: 'f1',
     name: 'KrakenSlayer',
     handle: '#kraken7744',
     avatarInitial: 'K',
     avatarColorIndex: 2,
     status: UserStatus.inGame,
-    activity: const GameActivity(
+    activity: GameActivity(
       gameName: 'Valorant',
       gameEmoji: '🎯',
       mode: 'Ranked',
@@ -140,14 +140,14 @@ final List<Friend> seedFriends = [
     ),
     mutualFriends: 8,
   ),
-  Friend(
+  const Friend(
     id: 'f2',
     name: 'ArcticPhantom',
     handle: '#arctic_99',
     avatarInitial: 'A',
     avatarColorIndex: 0,
     status: UserStatus.inGame,
-    activity: const GameActivity(
+    activity: GameActivity(
       gameName: 'Apex Legends',
       gameEmoji: '🔫',
       mode: 'Ranked',
@@ -155,14 +155,14 @@ final List<Friend> seedFriends = [
     ),
     mutualFriends: 4,
   ),
-  Friend(
+  const Friend(
     id: 'f3',
     name: 'DuskReaper',
     handle: '#dusk_gg',
     avatarInitial: 'D',
     avatarColorIndex: 3,
     status: UserStatus.inGame,
-    activity: const GameActivity(
+    activity: GameActivity(
       gameName: 'League of Legends',
       gameEmoji: '⚔️',
       mode: 'Ranked',
@@ -171,14 +171,14 @@ final List<Friend> seedFriends = [
     ),
     mutualFriends: 12,
   ),
-  Friend(
+  const Friend(
     id: 'f4',
     name: 'NovaStealth',
     handle: '#nova_s',
     avatarInitial: 'N',
     avatarColorIndex: 3,
     status: UserStatus.inGame,
-    activity: const GameActivity(
+    activity: GameActivity(
       gameName: 'Fortnite',
       gameEmoji: '🏗️',
       mode: 'Squads',
@@ -188,7 +188,7 @@ final List<Friend> seedFriends = [
   ),
 
   // ── Online ────────────────────────────────────────────────────
-  Friend(
+  const Friend(
     id: 'f5',
     name: 'MidnightRaider',
     handle: '#midnight_r',
@@ -197,7 +197,7 @@ final List<Friend> seedFriends = [
     status: UserStatus.online,
     mutualFriends: 6,
   ),
-  Friend(
+  const Friend(
     id: 'f6',
     name: 'RiftWalker99',
     handle: '#riftwalk',
@@ -206,7 +206,7 @@ final List<Friend> seedFriends = [
     status: UserStatus.online,
     mutualFriends: 2,
   ),
-  Friend(
+  const Friend(
     id: 'f7',
     name: 'IronVex',
     handle: '#ironvex',
@@ -217,7 +217,7 @@ final List<Friend> seedFriends = [
   ),
 
   // ── Idle ──────────────────────────────────────────────────────
-  Friend(
+  const Friend(
     id: 'f8',
     name: 'VortexFrost',
     handle: '#vfrost',
@@ -226,7 +226,7 @@ final List<Friend> seedFriends = [
     status: UserStatus.idle,
     mutualFriends: 5,
   ),
-  Friend(
+  const Friend(
     id: 'f9',
     name: 'ZeroGravity',
     handle: '#zerog',
@@ -237,7 +237,7 @@ final List<Friend> seedFriends = [
   ),
 
   // ── Offline ───────────────────────────────────────────────────
-  Friend(
+  const Friend(
     id: 'f10',
     name: 'ShadowByte',
     handle: '#shadowb',

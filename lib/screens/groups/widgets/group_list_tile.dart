@@ -444,7 +444,7 @@ class _GroupContextMenu extends ConsumerWidget {
             icon: Icons.notifications_off_outlined,
             label: group.isMuted ? 'Unmute Group' : 'Mute Group',
             onTap: () {
-              ref.read(groupListProvider.notifier).toggleMute(group.id);
+              ref.read(groupsActionProvider.notifier).toggleMute(group.id);
               Navigator.pop(context);
             },
           ),
@@ -463,7 +463,7 @@ class _GroupContextMenu extends ConsumerWidget {
             label: 'Leave Group',
             color: AppColors.danger,
             onTap: () {
-              ref.read(groupListProvider.notifier).leaveGroup(group.id);
+              ref.read(groupsActionProvider.notifier).leaveGroup(group.id);
               Navigator.pop(context);
             },
           ),

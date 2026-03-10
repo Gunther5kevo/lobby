@@ -93,9 +93,9 @@ class FcmService {
       notification.hashCode,
       notification.title,
       notification.body,
-      NotificationDetails(
+      const NotificationDetails(
         android: _channel,
-        iOS: const DarwinNotificationDetails(
+        iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
@@ -143,7 +143,9 @@ class _BroadcastStreamController<T> {
   final _listeners = <void Function(T)>[];
 
   void add(T value) {
-    for (final l in _listeners) l(value);
+    for (final l in _listeners) {
+      l(value);
+    }
   }
 
   Stream<T> get stream async* {

@@ -388,3 +388,27 @@ final List<Group> suggestedGroups = [
     channels: [],
   ),
 ];
+
+// ── GroupMessage ───────────────────────────────────────────────────────────
+
+class GroupMessage extends Equatable {
+  const GroupMessage({
+    required this.id,
+    required this.senderUid,
+    required this.senderName,
+    required this.senderColorIndex,
+    required this.text,
+    required this.sentAt,
+  });
+
+  final String   id;
+  final String   senderUid;
+  final String   senderName;
+  final int      senderColorIndex;
+  final String   text;
+  final DateTime sentAt;
+
+  @override
+  List<Object?> get props =>
+      [id, senderUid, senderName, senderColorIndex, text, sentAt];
+}

@@ -5,7 +5,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/message_model.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/rtdb_providers.dart';
 import 'voice_message_bubble.dart';
 import 'game_invite_card.dart';
 import 'image_message_bubble.dart';

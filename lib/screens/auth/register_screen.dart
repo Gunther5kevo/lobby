@@ -39,10 +39,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_handleCtrl.text.startsWith('#')) return 'Handle must start with #';
     if (_emailCtrl.text.trim().isEmpty) return 'Email is required.';
     if (!_emailCtrl.text.contains('@')) return 'Enter a valid email.';
-    if (_passwordCtrl.text.length < 6)
+    if (_passwordCtrl.text.length < 6) {
       return 'Password must be at least 6 characters.';
-    if (_passwordCtrl.text != _confirmCtrl.text)
+    }
+    if (_passwordCtrl.text != _confirmCtrl.text) {
       return "Passwords don't match.";
+    }
     return null;
   }
 

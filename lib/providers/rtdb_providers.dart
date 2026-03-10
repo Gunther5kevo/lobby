@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lobby/services/firestore_service.dart';
+import '../services/firestore_service.dart';
 import '../services/rtdb_service.dart';
 import 'auth_provider.dart';
 import 'firestore_providers.dart';
@@ -120,12 +120,8 @@ class ChannelMessageNotifier extends StateNotifier<MessageSendState> {
         text:       text.trim(),
       );
 
-      // Update group's lastActivity in Firestore for the group list preview
-      await _fs.updateGroupLastActivity(
-        groupId:   groupId,
-        channelId: channelId,
-        preview:   text.trim(),
-      );
+      // lastActivity is updated inside FirestoreService.sendGroupMessage —
+      // no separate call needed here.
 
       state = const MessageSendState();
     } catch (e) {

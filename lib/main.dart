@@ -64,7 +64,7 @@ class AuthGate extends ConsumerWidget {
       loading: () => const _SplashScreen(),
 
       // ── Error (rare — Firebase init failure) ──────────────────
-      error: (e, _) => Scaffold(
+      error: (e, _) => const Scaffold(
         backgroundColor: AppColors.bgBase,
         body: Center(
           child: Text(

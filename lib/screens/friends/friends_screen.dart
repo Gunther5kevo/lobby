@@ -7,7 +7,6 @@ import '../../models/chat_model.dart';
 import '../../models/friend_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/friends_provider.dart';
-import '../../services/firestore_service.dart';
 import '../../widgets/section_header.dart';
 import '../conversation/conversation_screen.dart';
 import 'widgets/filter_chips_row.dart';

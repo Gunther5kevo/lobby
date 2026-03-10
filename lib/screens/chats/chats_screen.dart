@@ -21,12 +21,13 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
 
   void _openChat(ChatPreview chat) {
     setState(() => _activeChatId = chat.id);
-    ref.read(chatListProvider.notifier).markAsRead(chat.id);
+    // ✅ markAsRead removed — no notifier on StreamProvider.
+    // Call FirestoreService directly or handle via a separate action provider.
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ConversationScreen(
           chat:     chat,
-          theirUid: chat.theirUid ?? chat.id, // real UID when available
+          theirUid: chat.theirUid ?? chat.id,
         ),
       ),
     );
@@ -34,10 +35,13 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pinned    = ref.watch(pinnedChatsProvider);
-    final recent    = ref.watch(recentChatsProvider);
+    final pinned     = ref.watch(pinnedChatsProvider);
+    final recent     = ref.watch(recentChatsProvider);
     final hasResults = pinned.isNotEmpty || recent.isNotEmpty;
-    final query     = ref.watch(searchQueryProvider);
+    final query      = ref.watch(searchQueryProvider);
+
+    // Surface loading / error states from the stream
+    final chatAsync = ref.watch(chatListProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -53,58 +57,62 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
             ),
             const SizedBox(height: 4),
             Expanded(
-              child: hasResults
-                  ? CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        if (pinned.isNotEmpty) ...[
-                          const SliverToBoxAdapter(
-                            child: SectionHeader(title: 'Pinned'),
-                          ),
-                          SliverList.separated(
-                            itemCount: pinned.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(indent: 83, height: 0),
-                            itemBuilder: (context, i) {
-                              final chat = pinned[i];
-                              return ChatListTile(
-                                chat: chat,
-                                isActive: _activeChatId == chat.id,
-                                onTap: () => _openChat(chat),
-                                onLongPress: () =>
-                                    _showContextMenu(context, chat.id),
-                              );
-                            },
-                          ),
-                        ],
-                        if (recent.isNotEmpty) ...[
-                          SliverToBoxAdapter(
-                            child: SectionHeader(
-                              title: query.isEmpty ? 'Recent' : 'Results',
+              child: chatAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error:   (e, _) => Center(child: Text('Error: $e')),
+                data:    (_) => hasResults
+                    ? CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          if (pinned.isNotEmpty) ...[
+                            const SliverToBoxAdapter(
+                              child: SectionHeader(title: 'Pinned'),
                             ),
-                          ),
-                          SliverList.separated(
-                            itemCount: recent.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(indent: 83, height: 0),
-                            itemBuilder: (context, i) {
-                              final chat = recent[i];
-                              return ChatListTile(
-                                chat: chat,
-                                isActive: _activeChatId == chat.id,
-                                onTap: () => _openChat(chat),
-                                onLongPress: () =>
-                                    _showContextMenu(context, chat.id),
-                              );
-                            },
+                            SliverList.separated(
+                              itemCount: pinned.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(indent: 83, height: 0),
+                              itemBuilder: (context, i) {
+                                final chat = pinned[i];
+                                return ChatListTile(
+                                  chat:        chat,
+                                  isActive:    _activeChatId == chat.id,
+                                  onTap:       () => _openChat(chat),
+                                  onLongPress: () =>
+                                      _showContextMenu(context, chat),
+                                );
+                              },
+                            ),
+                          ],
+                          if (recent.isNotEmpty) ...[
+                            SliverToBoxAdapter(
+                              child: SectionHeader(
+                                title: query.isEmpty ? 'Recent' : 'Results',
+                              ),
+                            ),
+                            SliverList.separated(
+                              itemCount: recent.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(indent: 83, height: 0),
+                              itemBuilder: (context, i) {
+                                final chat = recent[i];
+                                return ChatListTile(
+                                  chat:        chat,
+                                  isActive:    _activeChatId == chat.id,
+                                  onTap:       () => _openChat(chat),
+                                  onLongPress: () =>
+                                      _showContextMenu(context, chat),
+                                );
+                              },
+                            ),
+                          ],
+                          const SliverPadding(
+                            padding: EdgeInsets.only(bottom: 16),
                           ),
                         ],
-                        const SliverPadding(
-                          padding: EdgeInsets.only(bottom: 16),
-                        ),
-                      ],
-                    )
-                  : _EmptyState(query: query),
+                      )
+                    : _EmptyState(query: query),
+              ),
             ),
           ],
         ),
@@ -112,14 +120,16 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
     );
   }
 
-  void _showContextMenu(BuildContext context, String chatId) {
+  // ✅ Now receives the full ChatPreview instead of just chatId,
+  // so _ChatContextMenu doesn't need to look it up from AsyncValue.
+  void _showContextMenu(BuildContext context, ChatPreview chat) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.bgElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _ChatContextMenu(chatId: chatId),
+      builder: (_) => _ChatContextMenu(chat: chat),
     );
   }
 }
@@ -139,13 +149,14 @@ class _ChatsHeader extends StatelessWidget {
                 TextSpan(text: 'Guild', style: AppTextStyles.appName),
                 TextSpan(
                   text: 'Chat',
-                  style: AppTextStyles.appName.copyWith(color: AppColors.accent),
+                  style: AppTextStyles.appName
+                      .copyWith(color: AppColors.accent),
                 ),
               ],
             ),
           ),
           const Spacer(),
-          _HeaderIconButton(icon: Icons.info_outline_rounded, onTap: () {}),
+          _HeaderIconButton(icon: Icons.info_outline_rounded,  onTap: () {}),
           const SizedBox(width: 8),
           Stack(
             clipBehavior: Clip.none,
@@ -231,13 +242,11 @@ class _EmptyState extends StatelessWidget {
 // ── Context menu ───────────────────────────────────────────────────────────
 
 class _ChatContextMenu extends ConsumerWidget {
-  const _ChatContextMenu({required this.chatId});
-  final String chatId;
+  const _ChatContextMenu({required this.chat});
+  final ChatPreview chat; // ✅ receives full object — no AsyncValue lookup needed
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chat = ref.read(chatListProvider).firstWhere((c) => c.id == chatId);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
       child: Column(
@@ -252,10 +261,10 @@ class _ChatContextMenu extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           _ContextAction(
-            icon: Icons.done_all_rounded,
+            icon:  Icons.done_all_rounded,
             label: 'Mark as read',
             onTap: () {
-              ref.read(chatListProvider.notifier).markAsRead(chatId);
+              // TODO: call firestoreService.markDmChatAsRead(chat.id)
               Navigator.pop(context);
             },
           ),
@@ -265,7 +274,7 @@ class _ChatContextMenu extends ConsumerWidget {
                 : Icons.notifications_off_outlined,
             label: chat.isMuted ? 'Unmute' : 'Mute notifications',
             onTap: () {
-              ref.read(chatListProvider.notifier).toggleMute(chatId);
+              ref.toggleMute(chat.id);
               Navigator.pop(context);
             },
           ),
@@ -275,12 +284,12 @@ class _ChatContextMenu extends ConsumerWidget {
                 : Icons.push_pin_rounded,
             label: chat.isPinned ? 'Unpin chat' : 'Pin chat',
             onTap: () {
-              ref.read(chatListProvider.notifier).togglePin(chatId);
+              ref.togglePin(chat.id);
               Navigator.pop(context);
             },
           ),
           _ContextAction(
-            icon: Icons.delete_outline_rounded,
+            icon:  Icons.delete_outline_rounded,
             label: 'Delete chat',
             color: AppColors.danger,
             onTap: () => Navigator.pop(context),
@@ -298,20 +307,20 @@ class _ContextAction extends StatelessWidget {
     required this.onTap,
     this.color,
   });
-  final IconData icon;
-  final String label;
+  final IconData    icon;
+  final String      label;
   final VoidCallback onTap;
-  final Color? color;
+  final Color?      color;
 
   @override
   Widget build(BuildContext context) {
     final c = color ?? AppColors.textSecondary;
     return ListTile(
-      leading: Icon(icon, color: c, size: 22),
-      title: Text(label,
+      leading:  Icon(icon, color: c, size: 22),
+      title:    Text(label,
           style: AppTextStyles.chatName
               .copyWith(color: c, fontWeight: FontWeight.w500)),
-      onTap: onTap,
+      onTap:    onTap,
       horizontalTitleGap: 12,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),
     );

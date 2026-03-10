@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 // ── Enums ──────────────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ enum MessagePreviewType {
   voiceMessage,
   screenshot,
   gameInvite,
-  activity, // e.g. "🎮 Playing Valorant"
+  activity,
 }
 
 // ── ChatPreview ────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ class ChatPreview extends Equatable {
     this.isPinned = false,
     this.isGroup = false,
     this.avatarEmoji,
-    this.theirUid, // UID of the other participant (null for seed/group chats)
+    this.theirUid,
   });
 
   final String id;
@@ -53,6 +54,68 @@ class ChatPreview extends Equatable {
   final bool isGroup;
   final String? avatarEmoji;
   final String? theirUid;
+
+  // ── Firestore deserialisation ──────────────────────────────────────────
+
+  factory ChatPreview.fromFirestore(Map<String, dynamic> data) {
+    // Resolve the other participant's display info if present
+    final participantNames = data['participantNames'] as Map<String, dynamic>?;
+    final participantColors = data['participantColors'] as Map<String, dynamic>?;
+    final participantUids = List<String>.from(data['participantUids'] ?? []);
+
+    // For DMs, name/avatar come from the other participant's stored info
+    final theirUid = participantUids.length == 2
+        ? participantUids.firstWhere(
+            (uid) => uid != (data['currentUid'] ?? ''),
+            orElse: () => participantUids.first,
+          )
+        : null;
+
+    final name = (theirUid != null && participantNames != null)
+        ? (participantNames[theirUid] as String? ?? 'Unknown')
+        : (data['name'] as String? ?? 'Unknown');
+
+    final avatarInitial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    final colorIndex = (theirUid != null && participantColors != null)
+        ? (participantColors[theirUid] as int? ?? 0)
+        : (data['avatarColorIndex'] as int? ?? 0);
+
+    // Timestamp
+    final rawTs = data['lastMessageAt'];
+    final timestamp = rawTs is Timestamp
+        ? rawTs.toDate()
+        : DateTime.now();
+
+    // Last message preview type
+    final typeStr = data['lastMessageType'] as String? ?? 'text';
+    final previewType = MessagePreviewType.values.firstWhere(
+      (e) => e.name == typeStr,
+      orElse: () => MessagePreviewType.text,
+    );
+
+    // Unread map — keyed by uid, value is count
+    final unreadMap = data['unread'] as Map<String, dynamic>?;
+    final unreadCount = (unreadMap != null && data['currentUid'] != null)
+        ? (unreadMap[data['currentUid']] as int? ?? 0)
+        : 0;
+
+    return ChatPreview(
+      id:              data['id'] as String? ?? '',
+      name:            name,
+      avatarInitial:   avatarInitial,
+      avatarColorIndex: colorIndex,
+      lastMessage:     data['lastMessage'] as String? ?? '',
+      lastMessageType: previewType,
+      timestamp:       timestamp,
+      status:          UserStatus.offline, // resolved separately via presenceProvider
+      unreadCount:     unreadCount,
+      isMuted:         data['isMuted'] as bool? ?? false,
+      isPinned:        data['isPinned'] as bool? ?? false,
+      isGroup:         (participantUids.length != 2),
+      theirUid:        theirUid,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -72,20 +135,20 @@ class ChatPreview extends Equatable {
     bool? isPinned,
   }) {
     return ChatPreview(
-      id: id,
-      name: name,
-      avatarInitial: avatarInitial,
+      id:              id,
+      name:            name,
+      avatarInitial:   avatarInitial,
       avatarColorIndex: avatarColorIndex,
-      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessage:     lastMessage ?? this.lastMessage,
       lastMessageType: lastMessageType ?? this.lastMessageType,
-      timestamp: timestamp ?? this.timestamp,
-      status: status ?? this.status,
-      unreadCount: unreadCount ?? this.unreadCount,
-      isMuted: isMuted ?? this.isMuted,
-      isPinned: isPinned ?? this.isPinned,
-      isGroup: isGroup,
-      avatarEmoji: avatarEmoji,
-      theirUid: theirUid,
+      timestamp:       timestamp ?? this.timestamp,
+      status:          status ?? this.status,
+      unreadCount:     unreadCount ?? this.unreadCount,
+      isMuted:         isMuted ?? this.isMuted,
+      isPinned:        isPinned ?? this.isPinned,
+      isGroup:         isGroup,
+      avatarEmoji:     avatarEmoji,
+      theirUid:        theirUid,
     );
   }
 }
@@ -93,7 +156,6 @@ class ChatPreview extends Equatable {
 // ── Dummy seed data ────────────────────────────────────────────────────────
 
 final List<ChatPreview> seedChats = [
-  // Pinned
   ChatPreview(
     id: 'c1',
     name: 'Shadow Squad',
@@ -120,7 +182,6 @@ final List<ChatPreview> seedChats = [
     unreadCount: 2,
     isPinned: true,
   ),
-  // Recent
   ChatPreview(
     id: 'c3',
     name: 'MidnightRaider',

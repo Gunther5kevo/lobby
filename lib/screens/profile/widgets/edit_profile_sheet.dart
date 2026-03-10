@@ -146,13 +146,13 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Display Name'),
+                  const _FieldLabel('Display Name'),
                   const SizedBox(height: 6),
                   _TextField(controller: _nameCtrl, hint: 'Your name'),
 
                   const SizedBox(height: 14),
 
-                  _FieldLabel('Handle'),
+                  const _FieldLabel('Handle'),
                   const SizedBox(height: 6),
                   _TextField(
                       controller: _handleCtrl,
@@ -161,7 +161,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 
                   const SizedBox(height: 14),
 
-                  _FieldLabel('Bio'),
+                  const _FieldLabel('Bio'),
                   const SizedBox(height: 6),
                   _TextField(
                     controller: _bioCtrl,
@@ -172,7 +172,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                   const SizedBox(height: 16),
 
                   // Status picker
-                  _FieldLabel('Status'),
+                  const _FieldLabel('Status'),
                   const SizedBox(height: 8),
                   _StatusPicker(
                     selected: _status,

@@ -178,9 +178,7 @@ class _ChannelPanel extends ConsumerWidget {
                           onTap: () {
                             HapticFeedback.selectionClick();
                             // Mark as read in provider
-                            ref
-                                .read(groupListProvider.notifier)
-                                .setActiveChannel(group.id, ch.id);
+                            ref.read(groupsActionProvider.notifier).markChannelRead(group.id, ch.id);
                             onChannelSelected(ch);
                             // Close drawer after selection
                             ref
@@ -455,5 +453,5 @@ class _AlwaysCompleteAnimation extends Animation<double>
   Animation<double> get parent => kAlwaysCompleteAnimation;
 
   @override
-  double get value => 1.0; 
+  double get value => 1.0;
 }

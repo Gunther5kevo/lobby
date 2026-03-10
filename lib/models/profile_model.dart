@@ -191,9 +191,9 @@ class UserProfile extends Equatable {
       xpToNext:     data['xpToNext']     as int? ?? 1000,
       guildPoints:  data['guildPoints']  as int? ?? 0,
       joinedAt:     (data['joinedAt'] as dynamic)?.toDate() ?? DateTime.now(),
-      achievements:   [],
+      achievements:   const [],
       connectedGames: connectedGames ?? [],
-      gameStats:      [],
+      gameStats:      const [],
       totalFriends:  data['totalFriends'] as int? ?? 0,
       totalGroups:   data['totalGroups']  as int? ?? 0,
     );
@@ -329,13 +329,13 @@ final seedProfile = UserProfile(
       rankEmoji: '🥇',
     ),
   ],
-  gameStats: [
+  gameStats: const [
     GameStatsEntry(
       gameName: 'Valorant',
       emoji: '🎯',
       gradientStart: 0xFF1a2040,
       gradientEnd:   0xFF0e1428,
-      stats: const [
+      stats: [
         GameStat(label: 'K/D Ratio',  value: '1.84', sublabel: 'Season avg'),
         GameStat(label: 'Win Rate',   value: '61%',  sublabel: '248 games'),
         GameStat(label: 'HS Rate',    value: '28%',  sublabel: 'Headshots'),
@@ -347,7 +347,7 @@ final seedProfile = UserProfile(
       emoji: '🔫',
       gradientStart: 0xFF1a2a1a,
       gradientEnd:   0xFF0e1e0e,
-      stats: const [
+      stats: [
         GameStat(label: 'K/D Ratio',   value: '2.1',   sublabel: 'Season avg'),
         GameStat(label: 'Win Rate',    value: '14%',   sublabel: '104 games'),
         GameStat(label: 'Avg Damage',  value: '1,240', sublabel: 'Per game'),
