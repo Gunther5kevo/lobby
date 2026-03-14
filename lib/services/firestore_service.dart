@@ -184,28 +184,63 @@ class FirestoreService {
       'toUid':                toUid,
       'status':               'pending',
       'createdAt':            FieldValue.serverTimestamp(),
-      'fromDisplayName':      fromDisplayName ?? '',   // ✅ never omitted
-      'fromHandle':           fromHandle ?? '',        // ✅ never omitted
+      'fromDisplayName':      fromDisplayName ?? '',
+      'fromHandle':           fromHandle ?? '',
       'fromAvatarColorIndex': fromAvatarColorIndex,
     });
   }
 
+  /// Accepts a friend request.
+  ///
+  /// Fetches both users' profiles first so each friend sub-doc is written
+  /// with denormalized display fields (displayName, handle, avatarColorIndex).
+  /// This means [friendsStreamProvider] never has to call getProfile() and
+  /// the name will always be correct — even if the profile fetch is slow.
   Future<void> acceptFriendRequest({
     required String requestId,
     required String myUid,
     required String theirUid,
   }) async {
+    // Fetch both profiles in parallel
+    final results = await Future.wait([
+      getProfile(myUid),
+      getProfile(theirUid),
+    ]);
+    final myProfile    = results[0];
+    final theirProfile = results[1];
+
     final batch = _db.batch();
+    final now   = FieldValue.serverTimestamp();
+
+    // Mark the request accepted
     batch.update(_friendRequests.doc(requestId), {'status': 'accepted'});
-    final now = FieldValue.serverTimestamp();
+
+    // Write their info into my friends sub-collection
     batch.set(
       _users.doc(myUid).collection('friends').doc(theirUid),
-      {'uid': theirUid, 'addedAt': now},
+      {
+        'uid':              theirUid,
+        'addedAt':          now,
+        'displayName':      theirProfile?['displayName'] ?? '',
+        'handle':           theirProfile?['handle'] ?? '',
+        'avatarColorIndex': theirProfile?['avatarColorIndex'] ?? 0,
+        'status':           theirProfile?['status'] ?? 'offline',
+      },
     );
+
+    // Write my info into their friends sub-collection
     batch.set(
       _users.doc(theirUid).collection('friends').doc(myUid),
-      {'uid': myUid, 'addedAt': now},
+      {
+        'uid':              myUid,
+        'addedAt':          now,
+        'displayName':      myProfile?['displayName'] ?? '',
+        'handle':           myProfile?['handle'] ?? '',
+        'avatarColorIndex': myProfile?['avatarColorIndex'] ?? 0,
+        'status':           myProfile?['status'] ?? 'offline',
+      },
     );
+
     await batch.commit();
   }
 

@@ -25,16 +25,15 @@ class _AddFriendSheetState extends ConsumerState<AddFriendSheet> {
   @override
   void dispose() {
     _debounce?.cancel();
+    ref.read(addFriendQueryProvider.notifier).state = ''; // ref before super
     _controller.dispose();
-    // Clear search query when sheet closes
-    ref.read(addFriendQueryProvider.notifier).state = '';
-    super.dispose();
+    super.dispose(); // always last
   }
 
   void _onChanged(String value) {
     _debounce?.cancel();
-    // Debounce 400ms so we don't fire on every keystroke
     _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return; // guard against sheet closing mid-debounce
       ref.read(addFriendQueryProvider.notifier).state = value.trim();
     });
   }
@@ -274,13 +273,15 @@ class _UserResultTileState extends ConsumerState<_UserResultTile> {
       final toUid = widget.user['uid'] as String? ?? '';
       await ref.read(friendsActionProvider.notifier).sendRequest(toUid);
       if (mounted) setState(() { _requested = true; _sending = false; });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            'Friend request sent to ${widget.user['displayName'] ?? 'player'}'),
-        backgroundColor: AppColors.bgElevated,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Friend request sent to ${widget.user['displayName'] ?? 'player'}'),
+          backgroundColor: AppColors.bgElevated,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
     } catch (_) {
       if (mounted) setState(() => _sending = false);
     }

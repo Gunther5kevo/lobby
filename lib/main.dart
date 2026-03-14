@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
@@ -10,6 +11,9 @@ import 'screens/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Environment variables ──────────────────────────────────────
+  await dotenv.load(fileName: '.env');
 
   // ── System UI ──────────────────────────────────────────────────
   SystemChrome.setSystemUIOverlayStyle(
@@ -64,7 +68,7 @@ class AuthGate extends ConsumerWidget {
       loading: () => const _SplashScreen(),
 
       // ── Error (rare — Firebase init failure) ──────────────────
-      error: (e, _) => const Scaffold(
+      error: (e, _) => Scaffold(
         backgroundColor: AppColors.bgBase,
         body: Center(
           child: Text(
